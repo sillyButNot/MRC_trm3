@@ -76,7 +76,7 @@ def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
 
 
 def evaluate(dataset, predictions):
-    f1 = exact_match = total = sentence_match = 0
+    f1 = exact_match = total = 0
     for article in dataset:
         title = article["title"]
         for paragraph in article["paragraphs"]:
@@ -87,11 +87,12 @@ def evaluate(dataset, predictions):
                     message = "Unanswered question " + q_id + " will receive score 0."
                     print(message, file=sys.stderr)
                     continue
-
                 ground_truths = list(map(lambda x: x["text"], qa["answers"]))
                 prediction = predictions[q_id]
 
-                exact_match += metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
+                exact_match += metric_max_over_ground_truths(
+                    exact_match_score, prediction, ground_truths
+                )
                 f1 += metric_max_over_ground_truths(f1_score, prediction, ground_truths)
 
     exact_match = 100.0 * exact_match / total
@@ -103,7 +104,9 @@ def eval_during_train(args, global_step):
     expected_version = "KorQuAD_v1.0"
 
     dataset_file = os.path.join(args.data_dir, args.predict_file)
-    prediction_file = os.path.join(args.output_dir, "predictions_{}.json".format(global_step))
+    prediction_file = os.path.join(
+        args.output_dir, "predictions_{}.json".format(global_step)
+    )
 
     with open(dataset_file) as dataset_f:
         dataset_json = json.load(dataset_f)
@@ -117,9 +120,15 @@ def eval_during_train(args, global_step):
 
 if __name__ == "__main__":
     expected_version = "KorQuAD_v1.0"
-    parser = argparse.ArgumentParser(description="Evaluation for KorQuAD " + expected_version)
-    parser.add_argument("--dataset_file", default="../../../MRC_trm3/data/KorQuAD_v1.0_dev.json")
-    parser.add_argument("--prediction_file", default="../../test_small/predictions_.json")
+    parser = argparse.ArgumentParser(
+        description="Evaluation for KorQuAD " + expected_version
+    )
+    parser.add_argument(
+        "--dataset_file", default="../../../MRC_trm3/data/KorQuAD_v1.0_dev.json"
+    )
+    parser.add_argument(
+        "--prediction_file", default="../../test_small/predictions_.json"
+    )
 
     args = parser.parse_args()
 

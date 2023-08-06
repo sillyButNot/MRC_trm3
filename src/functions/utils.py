@@ -58,17 +58,23 @@ def load_examples(
     print("Creating features from dataset file at {}".format(input_dir))
 
     # processor 선언
-    processor = SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
+    processor = (
+        SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
+    )
 
     # open test 시
     if do_predict:
         examples = processor.get_example_from_input(input_dict)
     # 평가 시
     elif evaluate:
-        examples = processor.get_dev_examples(os.path.join(args.data_dir), filename=args.predict_file)
+        examples = processor.get_dev_examples(
+            os.path.join(args.data_dir), filename=args.predict_file
+        )
     # 학습 시
     else:
-        examples = processor.get_train_examples(os.path.join(args.data_dir), filename=args.train_file)
+        examples = processor.get_train_examples(
+            os.path.join(args.data_dir), filename=args.train_file
+        )
     features, dataset = squad_convert_examples_to_features(
         examples=examples,
         tokenizer=tokenizer,
@@ -85,7 +91,9 @@ def load_examples(
 
 
 def load_input_data(args, tokenizer, question, context):
-    processor = SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
+    processor = (
+        SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
+    )
     example = [processor.example_from_input(question, context)]
     features, dataset = squad_convert_examples_to_features(
         examples=example,
