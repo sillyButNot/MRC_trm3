@@ -123,10 +123,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Evaluation for KorQuAD " + expected_version
     )
-    parser.add_argument("--dataset_file", default="../../data/KorQuAD_v1.0_dev.json")
-    parser.add_argument("--prediction_file", default="../../test/predictions_.json")
+    parser.add_argument(
+        "--dataset_file", default="../../../MRC_trm3/data/KorQuAD_v1.0_dev.json"
+    )
+    parser.add_argument(
+        "--prediction_file", default="../../test_small/predictions_.json"
+    )
 
     args = parser.parse_args()
+
     with open(args.dataset_file) as dataset_file:
         dataset_json = json.load(dataset_file)
         # read_version = "_".join(dataset_json['version'].split("_")[:-1])

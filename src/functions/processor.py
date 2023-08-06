@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import json
 import os
 from functools import partial
@@ -786,6 +785,9 @@ class SquadProcessor(DataProcessor):
                         answers=answers,
                     )
                     examples.append(example)
+                    # if len(examples) > 1000:
+                    #     return examples
+
         return examples
 
 
@@ -948,9 +950,9 @@ class SquadResult:
         unique_id,
         start_logits,
         end_logits,
+        cls_logits,
         start_top_index=None,
         end_top_index=None,
-        cls_logits=None,
     ):
         self.start_logits = start_logits
         self.end_logits = end_logits

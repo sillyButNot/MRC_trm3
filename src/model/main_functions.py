@@ -207,7 +207,7 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
             # 입력 질문에 대한 N개의 결과 저장하기위해 q_id 저장
             unique_id = int(eval_feature.unique_id)
 
-            # outputs = [start_logits, end_logits]
+            # outputs = [start_logits, end_logits, cls_logits]
             output = [to_list(output[i]) for output in outputs]
 
             # start_logits: [batch_size, max_length]

@@ -20,7 +20,6 @@ additional na_prob.json file is provided. This file is expected to map question 
 probability that a question is unanswerable.
 """
 
-
 import collections
 import json
 import math
@@ -41,7 +40,6 @@ from transformers.data.metrics.squad_metrics import (
     _get_best_indexes,
     _compute_softmax,
 )
-
 
 logger = logging.get_logger(__name__)
 
