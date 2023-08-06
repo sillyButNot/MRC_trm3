@@ -122,7 +122,7 @@ def compute_predictions_logits(
     for result in all_results:
         unique_id_to_result[result.unique_id] = result
 
-    _PrelimPrediction = collections.namedtuple(  # pylint: disable=invalid-name
+    _PrelimPrediction = collections.namedtuple(
         "PrelimPrediction",
         [
             "feature_index",
@@ -131,6 +131,8 @@ def compute_predictions_logits(
             "start_logit",
             "end_logit",
             "cls_logit",
+            "start_sentence",
+            "end_sentence",
         ],
     )
 
@@ -150,6 +152,8 @@ def compute_predictions_logits(
         null_cls_logit = 0
         for feature_index, feature in enumerate(features):
             result = unique_id_to_result[feature.unique_id]
+            #################정답 인덱스가 있는 문장 찾기 위함, 문서의 맨 끝 sep는 제외해야하기 때문에 1을 빼줌
+
             start_indexes = _get_best_indexes(result.start_logits, n_best_size)
             end_indexes = _get_best_indexes(result.end_logits, n_best_size)
             # if we could have irrelevant answers, get the min score of irrelevant
@@ -188,8 +192,11 @@ def compute_predictions_logits(
                             start_logit=result.start_logits[start_index],
                             end_logit=result.end_logits[end_index],
                             cls_logit=result.cls_logits,
+                            start_sentence=result.start_sentence,
+                            end_sentence=result.end_sentence,
                         )
                     )
+
         if version_2_with_negative:
             prelim_predictions.append(
                 _PrelimPrediction(
@@ -199,6 +206,8 @@ def compute_predictions_logits(
                     start_logit=null_start_logit,
                     end_logit=null_end_logit,
                     cls_logit=null_cls_logit,
+                    start_sentence=result.start_sentence,
+                    end_sentence=result.end_sentence,
                 )
             )
         prelim_predictions = sorted(
@@ -208,7 +217,16 @@ def compute_predictions_logits(
         )
 
         _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-            "NbestPrediction", ["text", "start_logit", "end_logit", "cls_logit"]
+            "NbestPrediction",
+            [
+                "text",
+                "start_logit",
+                "end_logit",
+                "cls_logit",
+                "start_sentence",
+                "end_sentence",
+                "answer_sentence",
+            ],
         )
 
         seen_predictions = {}
@@ -253,6 +271,8 @@ def compute_predictions_logits(
                     start_logit=pred.start_logit,
                     end_logit=pred.end_logit,
                     cls_logit=pred.cls_logit,
+                    start_sentence=pred.start_sentence,
+                    end_sentence=pred.end_sentence,
                 )
             )
         # if we didn't include the empty option in the n-best, include it
@@ -264,6 +284,8 @@ def compute_predictions_logits(
                         start_logit=null_start_logit,
                         end_logit=null_end_logit,
                         cls_logit=null_cls_logit,
+                        start_sentence=pred.start_sentence,
+                        end_sentence=pred.end_sentence,
                     )
                 )
 
@@ -273,7 +295,12 @@ def compute_predictions_logits(
                 nbest.insert(
                     0,
                     _NbestPrediction(
-                        text="empty", start_logit=0.0, end_logit=0.0, cls_logit=0.0
+                        text="empty",
+                        start_logit=0.0,
+                        end_logit=0.0,
+                        cls_logit=0.0,
+                        start_sentence=0.0,
+                        end_sentence=0.0,
                     ),
                 )
 
@@ -282,7 +309,12 @@ def compute_predictions_logits(
         if not nbest:
             nbest.append(
                 _NbestPrediction(
-                    text="empty", start_logit=0.0, end_logit=0.0, cls_logit=0.0
+                    text="empty",
+                    start_logit=0.0,
+                    end_logit=0.0,
+                    cls_logit=0.0,
+                    start_sentence=0.0,
+                    end_sentence=0.0,
                 )
             )
 
@@ -306,6 +338,9 @@ def compute_predictions_logits(
             output["start_logit"] = entry.start_logit
             output["end_logit"] = entry.end_logit
             output["cls_logit"] = entry.cls_logit
+            output["start_sentence"] = entry.start_sentence
+            output["end_sentence"] = entry.end_sentence
+            output["answer_sentence"] = entry.answer_sentence
             nbest_json.append(output)
 
         assert len(nbest_json) >= 1, "No valid predictions"

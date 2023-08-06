@@ -95,6 +95,7 @@ def train(args, model, tokenizer, logger):
                 "start_positions": batch[3],
                 "end_positions": batch[4],
                 "is_answer": batch[8],
+                "sentence_map": batch[9],
             }
 
             # Loss 계산 및 저장
@@ -190,6 +191,7 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
                 "input_ids": batch[0],
                 "attention_mask": batch[1],
                 "token_type_ids": batch[2],
+                "sentence_map": batch[6],
             }
             # 입력 데이터 별 고유 id 저장 (feature와 dataset에 종속)
             example_indices = batch[3]
@@ -212,10 +214,17 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
 
             # start_logits: [batch_size, max_length]
             # end_logits: [batch_size, max_length]
-            start_logits, end_logits, cls_logits = output
+            start_sentence, end_sentence, start_logits, end_logits, cls_logits = output
 
             # q_id에 대한 예측 정답 시작/끝 위치 확률 저장
-            result = SquadResult(unique_id, start_logits, end_logits, cls_logits[1])
+            result = SquadResult(
+                unique_id,
+                start_logits,
+                end_logits,
+                cls_logits[1],
+                start_sentence=start_sentence,
+                end_sentence=end_sentence,
+            )
 
             # feature에 종속되는 최종 출력 값을 리스트에 저장
             all_results.append(result)

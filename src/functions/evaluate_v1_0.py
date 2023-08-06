@@ -76,7 +76,7 @@ def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
 
 
 def evaluate(dataset, predictions):
-    f1 = exact_match = total = 0
+    f1 = exact_match = total = sentence_match = 0
     for article in dataset:
         title = article["title"]
         for paragraph in article["paragraphs"]:
@@ -87,6 +87,7 @@ def evaluate(dataset, predictions):
                     message = "Unanswered question " + q_id + " will receive score 0."
                     print(message, file=sys.stderr)
                     continue
+
                 ground_truths = list(map(lambda x: x["text"], qa["answers"]))
                 prediction = predictions[q_id]
 

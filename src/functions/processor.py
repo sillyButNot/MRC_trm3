@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import json
 import os
 from functools import partial
@@ -29,6 +30,7 @@ from transformers.tokenization_utils_base import (
 )
 from transformers.utils import logging
 from transformers.data.processors.utils import DataProcessor
+from nltk.tokenize import sent_tokenize
 
 
 # Store the tokenizers which insert 2 separators tokens
@@ -129,6 +131,7 @@ def squad_convert_example_to_features(
     tok_to_orig_index = []
     orig_to_tok_index = []
     all_doc_tokens = []
+    tok_to_orig_sentence = []
     for i, token in enumerate(example.doc_tokens):
         orig_to_tok_index.append(len(all_doc_tokens))
         if tokenizer.__class__.__name__ in [
@@ -143,6 +146,7 @@ def squad_convert_example_to_features(
         else:
             sub_tokens = tokenizer.tokenize(token)
         for sub_token in sub_tokens:
+            tok_to_orig_sentence.append(example.sentence_index[i])
             tok_to_orig_index.append(i)
             all_doc_tokens.append(sub_token)
 
@@ -233,6 +237,9 @@ def squad_convert_example_to_features(
 
         tokens = tokenizer.convert_ids_to_tokens(non_padded_ids)
 
+        token_to_sentence_map = []
+        question_index = [1]
+        token_to_sentence_map += question_index * (len(truncated_query) + 2)
         token_to_orig_map = {}
         for i in range(paragraph_len):
             index = (
@@ -241,10 +248,20 @@ def squad_convert_example_to_features(
                 else i
             )
             token_to_orig_map[index] = tok_to_orig_index[len(spans) * doc_stride + i]
+            token_to_sentence_map.append(
+                tok_to_orig_sentence[len(spans) * doc_stride + i]
+            )
+
+        # 맨 마지막 친구는 마지막 인덱스 값을 주어야 하나? -> 특수토큰은 다 질문한테 모이게 할 것
+        token_to_sentence_map += question_index
+        token_to_sentence_map = token_to_sentence_map[:max_seq_length]
+        padding = [0] * (max_seq_length - len(token_to_sentence_map))
+        token_to_sentence_map = token_to_sentence_map + padding
 
         encoded_dict["paragraph_len"] = paragraph_len
         encoded_dict["tokens"] = tokens
         encoded_dict["token_to_orig_map"] = token_to_orig_map
+        encoded_dict["token_to_sentence_map"] = token_to_sentence_map
         encoded_dict["truncated_query_with_special_tokens_length"] = (
             len(truncated_query) + sequence_added_tokens
         )
@@ -341,6 +358,7 @@ def squad_convert_example_to_features(
                 cls_index,
                 p_mask.tolist(),
                 is_answer=is_answer,
+                token_to_sentence_map=span["token_to_sentence_map"],
                 example_index=0,  # Can not set unique_id and example_index here. They will be set after multiple processing.
                 unique_id=0,
                 paragraph_len=span["paragraph_len"],
@@ -471,7 +489,9 @@ def squad_convert_examples_to_features(
         all_is_impossible = torch.tensor(
             [f.is_impossible for f in features], dtype=torch.float
         )
-
+        all_token_to_sentence_map = torch.tensor(
+            [f.token_to_sentence_map for f in features], dtype=torch.int64
+        )
         if not is_training:
             all_feature_index = torch.arange(all_input_ids.size(0), dtype=torch.long)
             dataset = TensorDataset(
@@ -481,6 +501,7 @@ def squad_convert_examples_to_features(
                 all_feature_index,
                 all_cls_index,
                 all_p_mask,
+                all_token_to_sentence_map,
             )
         else:
             all_start_positions = torch.tensor(
@@ -492,6 +513,7 @@ def squad_convert_examples_to_features(
             all_is_answer = torch.tensor(
                 [f.is_answer for f in features], dtype=torch.long
             )
+
             dataset = TensorDataset(
                 all_input_ids,
                 all_attention_masks,
@@ -502,6 +524,7 @@ def squad_convert_examples_to_features(
                 all_p_mask,
                 all_is_impossible,
                 all_is_answer,
+                all_token_to_sentence_map,
             )
 
         return features, dataset
@@ -837,24 +860,58 @@ class SquadExample:
 
         self.start_position, self.end_position = 0, 0
 
+        sentences = re.split(
+            r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", self.context_text
+        )
+        # sentences = sent_tokenize(self.context_text)
+        sentence_index = []
         doc_tokens = []
         char_to_word_offset = []
         prev_is_whitespace = True
 
+        sentence_number = 2
         # Split on whitespace so that different tokens may be attributed to their original position.
-        for c in self.context_text:
-            if _is_whitespace(c):
-                prev_is_whitespace = True
-            else:
-                if prev_is_whitespace:
-                    doc_tokens.append(c)
+
+        for sentence in sentences:
+            prev_is_whitespace = True
+            for c in sentence:
+                if _is_whitespace(c):
+                    prev_is_whitespace = True
                 else:
-                    doc_tokens[-1] += c
-                prev_is_whitespace = False
+                    if prev_is_whitespace:
+                        doc_tokens.append(c)
+                        sentence_index.append(sentence_number)
+                    else:
+                        doc_tokens[-1] += c
+                    prev_is_whitespace = False
+                char_to_word_offset.append(len(doc_tokens) - 1)
             char_to_word_offset.append(len(doc_tokens) - 1)
+            sentence_number = sentence_number + 1
+
+        char_to_word_offset.pop()
+
+        #!!! 문장으로 분류한 부분 확인하는 곳
+        # doc_tokens_ = []
+        # char_to_word_offset_ = []
+        # prev_is_whitespace = True
+        # for c in self.context_text:
+        #     if _is_whitespace(c):
+        #         prev_is_whitespace = True
+        #     else:
+        #         if prev_is_whitespace:
+        #             doc_tokens_.append(c)
+
+        #         else:
+        #             doc_tokens_[-1] += c
+        #         prev_is_whitespace = False
+        #     char_to_word_offset_.append(len(doc_tokens_) - 1)
+
+        # if doc_tokens != doc_tokens_:
+        #     print("hi")
 
         self.doc_tokens = doc_tokens
         self.char_to_word_offset = char_to_word_offset
+        self.sentence_index = sentence_index
 
         # Start and end positions only has a value during evaluation.
         if start_position_character is not None and not is_impossible:
@@ -910,6 +967,7 @@ class SquadFeatures:
         end_position,
         is_impossible,
         is_answer,
+        token_to_sentence_map,
         qas_id: str = None,
         encoding: BatchEncoding = None,
     ):
@@ -925,6 +983,7 @@ class SquadFeatures:
         self.token_is_max_context = token_is_max_context
         self.tokens = tokens
         self.token_to_orig_map = token_to_orig_map
+        self.token_to_sentence_map = token_to_sentence_map
         self.is_answer = is_answer
 
         self.start_position = start_position
@@ -951,6 +1010,8 @@ class SquadResult:
         start_logits,
         end_logits,
         cls_logits,
+        start_sentence=None,
+        end_sentence=None,
         start_top_index=None,
         end_top_index=None,
     ):
@@ -958,8 +1019,13 @@ class SquadResult:
         self.end_logits = end_logits
         self.unique_id = unique_id
         self.cls_logits = cls_logits
-
+        self.start_sentence = start_sentence
+        self.end_sentence = end_sentence
+        if start_sentence is not None:
+            self.start_sentence = start_sentence
+            self.end_sentence = end_sentence
+        else:
+            print("hi")
         if start_top_index:
             self.start_top_index = start_top_index
             self.end_top_index = end_top_index
-            self.cls_logits = cls_logits

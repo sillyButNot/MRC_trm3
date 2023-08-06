@@ -10,6 +10,43 @@ import torch.nn.functional as F
 # from transformers.models.electra import ElectraModel, ElectraPreTrainedModel
 
 
+class attn_sequence(nn.Module):
+    def __init__(self, hidden_size):
+        super(attn_sequence, self).__init__()
+        self.hidden_size = hidden_size
+        self.sentence_linear = nn.Linear(2 * self.hidden_size, self.hidden_size)
+
+    def forward(self, cls_outputs, attn_sentence_output, electra_output):
+        # cls_output : [batch, hidden]
+        # attn_sentence_output : [batch, 1, hidden]
+        # electra_output : [batch, seq_length, hidden]
+
+        # cls벡터와 결과값을 concat 해줄거임
+        # [batch, 1, hidden] + [batch, 1, hidden] -> [batch, 1, 2* hidden]
+        concat_sentence_cls = torch.cat(
+            (attn_sentence_output, cls_outputs.unsqueeze(dim=1)), dim=-1
+        )
+        # [batch, 1, 2*hidden] -> [batch, 1, hidden]
+        concat_sentence_cls = self.sentence_linear(concat_sentence_cls)
+
+        # decoder_start_index :[batch, 1, hidden] *  [batch_size, hidden_size, seq_length]
+        # = [batch, 1, seq_length]
+        decoder_index = torch.bmm(concat_sentence_cls, electra_output.transpose(1, 2))
+
+        # attn_weights_softmax : [batch, 1, seq_length]
+        attn_weights_softmax = F.softmax(decoder_index, dim=-1)
+
+        # decoder_index : [batch, hidden]
+        decoder_index = decoder_index.squeeze(dim=1)
+
+        # decoder_input : [batch, 1, seq_length] * [batch, seq_length, hidden] = [batch, 1, hidden]
+        decoder_input = torch.bmm(attn_weights_softmax, electra_output)
+
+        # decoder_input : [batch, 1, hidden]
+        # decoder_index : [batch, hidden]
+        return decoder_input, decoder_index
+
+
 class rnn_Decoder(nn.Module):
     def __init__(self, config, hidden_size):
         super(rnn_Decoder, self).__init__()
@@ -27,10 +64,11 @@ class rnn_Decoder(nn.Module):
 
         self.linear = nn.Linear(self.hidden_size, self.hidden_size)
 
-    def forward(self, input, last_hidden, encoder_outputs):
+    def forward(self, input, last_hidden, sentence_representation):
         # input: (batch, 1, hidden_size //2 ) 16,1,128
         # last_hidden : (1, batch, hidden_size)
-        # encoder_outputs : (batch, seq_length, hidden) 16 512 256
+        # sentence_representation : [batch, sentence_number, hidden_size]
+        # encoder_outputs : [batch, sentence_number, hidden_size]
 
         ###########################################################
         # input : (batch, seq,hidden, hidden)
@@ -41,27 +79,39 @@ class rnn_Decoder(nn.Module):
         # rnn_hidden : (1, batch, hidden_size)
         rnn_output, rnn_hidden = self.gru(input, last_hidden)
 
+        # l_rnn_output : [batch, 1, hidden_size]
         l_rnn_output = self.linear(rnn_output)
         # attention
-        # encoder_outputs : (batch, seq_length, hidden) -> (batch, hidden, seq_length)
-        encoder_outputs = encoder_outputs.permute(0, 2, 1)
 
-        # attn_weight : (batch, 1, seq_length)
-        attn_weights = torch.bmm(l_rnn_output, encoder_outputs)
+        if l_rnn_output.device != sentence_representation.device:
+            sentence_representation = sentence_representation.to(l_rnn_output.device)
+
+        # [batch, 1, hidden_size] * [batch, hidden_size, sentence_number] = [batch, 1, sentence_number]
+        attn_weights = torch.bmm(l_rnn_output, sentence_representation.permute(0, 2, 1))
+
+        # attn_weights : [batch, 1, sentence_number]
+        attn_weights = F.softmax(attn_weights, dim=-1)
+
+        # attn_output : [batch, 1, sentence_number] * [batch, sentence_number, hidden_size]
+        # = [batch, 1, hidden]
+        attn_sentence_output = torch.bmm(attn_weights, sentence_representation)
 
         # attn_weight =  (batch, 1, seq_length)
-        # attn_weights = F.softmax(attn_weights, dim=-1)
-        # rnn_output : (batch, 1, hidden)
-        return attn_weights, rnn_hidden
+        # rnn_hidden : (1, batch, hidden_size)
+        # attn_sentence_output : (batch, 1, hidden)
+        return attn_sentence_output, rnn_hidden, attn_weights
 
 
 class ElectraForQuestionAnswering(ElectraPreTrainedModel):
     def __init__(self, config):
         super(ElectraForQuestionAnswering, self).__init__(config)
+
         # 분류 해야할 라벨 개수 (start/end)
         self.num_labels = config.num_labels
         self.hidden_size = config.hidden_size
         self.cls_number = config.cls_number
+        self.max_sentence_number = config.max_sentence_number
+
         # electra model의 추가 설정
         # output_attentions : 모든 electra layer(12층)의 attention alignment score
         # output_hidden_states : 모든 electra layer(12층)의 attention output
@@ -69,6 +119,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # config.output_attentions = True
         # config.output_hidden_states = True
         self.vocab_size = config.vocab_size
+
         # ELECTRA 모델 선언
         self.electra = ElectraModel(config)
 
@@ -78,8 +129,10 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         self.end_linear = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.decoder_cls = nn.Linear(config.hidden_size, config.hidden_size)
+
         self.embedding_layer = self.electra.get_input_embeddings()
         self.decoder = rnn_Decoder(config=config, hidden_size=self.hidden_size)
+        self.attn_sequence = attn_sequence(self.hidden_size)
 
     def forward(
         self,
@@ -95,6 +148,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         end_positions=None,
         #################
         is_answer=None,
+        sentence_map=None,
     ):
         # ELECTRA output 저장
         # outputs : [1, batch_size, seq_length, hidden_size]
@@ -135,6 +189,26 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # dedcoder_input : [batch,] (16,) start 심볼을 넣어주는 것
         # 시작 symbol은 cls 토큰을 넣어줌
 
+        # !!!sentence attention 코드 추가
+        # sentence_one_hot : [batch, seq_length, sentence_number]
+        sentence_one_hot = F.one_hot(sentence_map, num_classes=self.max_sentence_number)
+
+        # sentence_one_hot : [batch, seq_length, sentence_number] -> [batch, sentence_number, seq_length]
+        sentence_one_hot = sentence_one_hot.type(torch.FloatTensor).transpose(1, 2)
+        # sentence_representation :[batch, sentence_number, seq_length] * [batch_size, seq_length, hidden_size]
+        # = [batch, sentence_number, hidden_size]
+
+        if sequence_output.device != sentence_one_hot.device:
+            sentence_one_hot = sentence_one_hot.to(sequence_output.device)
+
+        sentence_representation = torch.bmm(sentence_one_hot, sequence_output)
+
+        #################################################################################
+        #################################################################################
+        #                                          start
+        #################################################################################
+        #################################################################################
+
         # decoder_input : (batch, hidden) -> (batch, 1, hidden)
         decoder_input = cls_outputs.unsqueeze(dim=1)
         # decoder_hidden : batch_size, hidden_size] 16, 128
@@ -149,26 +223,42 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # decoder_hidden : (1, batch, hidden_size)
         # decoder_input : (batch,)
 
-        # attn_weight = (batch, 1, seq_length)
+        # attn_sentence_output : (batch, 1, hidden)
         # decoder_hidden : (1, batch, hidden_size)
-        attn_weights, decoder_hidden = self.decoder(
-            decoder_input, decoder_hidden, sequence_output
+        # start_attn_weights : [batch, 1, sentence_number]
+        attn_sentence_output, decoder_hidden, start_attn_weights = self.decoder(
+            decoder_input, decoder_hidden, sentence_representation
         )
-        decoder_start_index = attn_weights
-        decoder_start_index = decoder_start_index.squeeze(dim=1)
 
-        attn_weights_softmax = F.softmax(attn_weights, dim=-1)
+        # start_sentence : [batch,1]
+        start_sentence = start_attn_weights.squeeze(dim=1).argmax(dim=-1)
+        # decoder_input : [batch, 1, hidden]
+        # decoder_start_index : [batch, hidden]
+        decoder_input, decoder_start_index = self.attn_sequence(
+            cls_outputs, attn_sentence_output, sequence_output
+        )
 
-        # decoder_input : (batch, 1, seq_length) * (batch, seq_length, hidden) = (batch, 1, hidden)
-        decoder_input = torch.bmm(attn_weights_softmax, sequence_output)
+        #################################################################################
+        #################################################################################
+        #                                          end
+        #################################################################################
+        #################################################################################
 
-        # attn_weight = (batch, 1, seq_length)
+        # attn_sentence_output : (batch, 1, hidden)
         # decoder_hidden : (1, batch, hidden_size)
-        attn_weights, decoder_hidden = self.decoder(
-            decoder_input, decoder_hidden, sequence_output
+        # end_attn_weights : [batch, 1, sentence_number]
+        attn_sentence_output, decoder_hidden, end_attn_weights = self.decoder(
+            decoder_input, decoder_hidden, sentence_representation
         )
-        decoder_end_index = attn_weights.squeeze(dim=1)
+        # end_sentence : [batch,1]
+        end_sentence = end_attn_weights.squeeze(dim=1).argmax(dim=-1)
+        # decoder_input : [batch, 1, hidden]
+        # decoder_start_index : [batch, hidden]
+        _, decoder_end_index = self.attn_sequence(
+            cls_outputs, attn_sentence_output, sequence_output
+        )
 
+        # outputs : (decoder_start_index, decoder_end_index, cls_index)
         outputs = (
             decoder_start_index,
             decoder_end_index,
@@ -198,5 +288,11 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
             # outputs : (total_loss, start_logits, end_logits, cls_logits)
             outputs = (total_loss,) + outputs
+        else:
+            # outputs : (start_sentence, end_sentence, start_logits, end_logits, cls_logits)
+            outputs = (
+                start_sentence,
+                end_sentence,
+            ) + outputs
 
         return outputs
