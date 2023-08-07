@@ -44,18 +44,10 @@ from transformers.data.metrics.squad_metrics import (
 logger = logging.get_logger(__name__)
 
 
-def squad_evaluate(
-    examples, preds, no_answer_probs=None, no_answer_probability_threshold=1.0
-):
-    qas_id_to_has_answer = {
-        example.qas_id: bool(example.answers) for example in examples
-    }
-    has_answer_qids = [
-        qas_id for qas_id, has_answer in qas_id_to_has_answer.items() if has_answer
-    ]
-    no_answer_qids = [
-        qas_id for qas_id, has_answer in qas_id_to_has_answer.items() if not has_answer
-    ]
+def squad_evaluate(examples, preds, no_answer_probs=None, no_answer_probability_threshold=1.0):
+    qas_id_to_has_answer = {example.qas_id: bool(example.answers) for example in examples}
+    has_answer_qids = [qas_id for qas_id, has_answer in qas_id_to_has_answer.items() if has_answer]
+    no_answer_qids = [qas_id for qas_id, has_answer in qas_id_to_has_answer.items() if not has_answer]
 
     if no_answer_probs is None:
         no_answer_probs = {k: 0.0 for k in preds}
@@ -65,28 +57,20 @@ def squad_evaluate(
     exact_threshold = apply_no_ans_threshold(
         exact, no_answer_probs, qas_id_to_has_answer, no_answer_probability_threshold
     )
-    f1_threshold = apply_no_ans_threshold(
-        f1, no_answer_probs, qas_id_to_has_answer, no_answer_probability_threshold
-    )
+    f1_threshold = apply_no_ans_threshold(f1, no_answer_probs, qas_id_to_has_answer, no_answer_probability_threshold)
 
     evaluation = make_eval_dict(exact_threshold, f1_threshold)
 
     if has_answer_qids:
-        has_ans_eval = make_eval_dict(
-            exact_threshold, f1_threshold, qid_list=has_answer_qids
-        )
+        has_ans_eval = make_eval_dict(exact_threshold, f1_threshold, qid_list=has_answer_qids)
         merge_eval(evaluation, has_ans_eval, "HasAns")
 
     if no_answer_qids:
-        no_ans_eval = make_eval_dict(
-            exact_threshold, f1_threshold, qid_list=no_answer_qids
-        )
+        no_ans_eval = make_eval_dict(exact_threshold, f1_threshold, qid_list=no_answer_qids)
         merge_eval(evaluation, no_ans_eval, "NoAns")
 
     if no_answer_probs:
-        find_all_best_thresh(
-            evaluation, preds, exact, f1, no_answer_probs, qas_id_to_has_answer
-        )
+        find_all_best_thresh(evaluation, preds, exact, f1, no_answer_probs, qas_id_to_has_answer)
 
     return evaluation
 
@@ -133,6 +117,7 @@ def compute_predictions_logits(
             "cls_logit",
             "start_sentence",
             "end_sentence",
+            "answer_sentence",
         ],
     )
 
@@ -194,6 +179,7 @@ def compute_predictions_logits(
                             cls_logit=result.cls_logits,
                             start_sentence=result.start_sentence,
                             end_sentence=result.end_sentence,
+                            answer_sentence=feature.answer_sentence,
                         )
                     )
 
@@ -208,6 +194,7 @@ def compute_predictions_logits(
                     cls_logit=null_cls_logit,
                     start_sentence=result.start_sentence,
                     end_sentence=result.end_sentence,
+                    answer_sentence=feature.answer_sentence,
                 )
             )
         prelim_predictions = sorted(
@@ -254,9 +241,7 @@ def compute_predictions_logits(
                 tok_text = " ".join(tok_text.split())
                 orig_text = " ".join(orig_tokens)
 
-                final_text = get_final_text(
-                    tok_text, orig_text, do_lower_case, verbose_logging
-                )
+                final_text = get_final_text(tok_text, orig_text, do_lower_case, verbose_logging)
                 if final_text in seen_predictions:
                     continue
 
@@ -273,6 +258,7 @@ def compute_predictions_logits(
                     cls_logit=pred.cls_logit,
                     start_sentence=pred.start_sentence,
                     end_sentence=pred.end_sentence,
+                    answer_sentence=pred.answer_sentence,
                 )
             )
         # if we didn't include the empty option in the n-best, include it
@@ -286,6 +272,7 @@ def compute_predictions_logits(
                         cls_logit=null_cls_logit,
                         start_sentence=pred.start_sentence,
                         end_sentence=pred.end_sentence,
+                        answer_sentence=pred.answer_sentence,
                     )
                 )
 
@@ -301,6 +288,7 @@ def compute_predictions_logits(
                         cls_logit=0.0,
                         start_sentence=0.0,
                         end_sentence=0.0,
+                        answer_sentence=0.0,
                     ),
                 )
 
@@ -315,6 +303,7 @@ def compute_predictions_logits(
                     cls_logit=0.0,
                     start_sentence=0.0,
                     end_sentence=0.0,
+                    answer_sentence=0.0,
                 )
             )
 
@@ -349,11 +338,7 @@ def compute_predictions_logits(
             all_predictions[example.qas_id] = nbest_json[0]["text"]
         else:
             # predict "" iff the null score - the score of best non-null > threshold
-            score_diff = (
-                score_null
-                - best_non_null_entry.start_logit
-                - (best_non_null_entry.end_logit)
-            )
+            score_diff = score_null - best_non_null_entry.start_logit - (best_non_null_entry.end_logit)
             scores_diff_json[example.qas_id] = score_diff
             if score_diff > null_score_diff_threshold:
                 all_predictions[example.qas_id] = ""
@@ -363,20 +348,14 @@ def compute_predictions_logits(
 
     if output_prediction_file:
         with open(output_prediction_file, "w") as writer:
-            writer.write(
-                json.dumps(all_predictions, indent=4, ensure_ascii=False) + "\n"
-            )
+            writer.write(json.dumps(all_predictions, indent=4, ensure_ascii=False) + "\n")
 
     if output_nbest_file:
         with open(output_nbest_file, "w") as writer:
-            writer.write(
-                json.dumps(all_nbest_json, indent=4, ensure_ascii=False) + "\n"
-            )
+            writer.write(json.dumps(all_nbest_json, indent=4, ensure_ascii=False) + "\n")
 
     if output_null_log_odds_file and version_2_with_negative:
         with open(output_null_log_odds_file, "w") as writer:
-            writer.write(
-                json.dumps(scores_diff_json, indent=4, ensure_ascii=False) + "\n"
-            )
+            writer.write(json.dumps(scores_diff_json, indent=4, ensure_ascii=False) + "\n")
 
     return all_predictions

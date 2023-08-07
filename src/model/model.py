@@ -23,9 +23,7 @@ class attn_sequence(nn.Module):
 
         # cls벡터와 결과값을 concat 해줄거임
         # [batch, 1, hidden] + [batch, 1, hidden] -> [batch, 1, 2* hidden]
-        concat_sentence_cls = torch.cat(
-            (attn_sentence_output, cls_outputs.unsqueeze(dim=1)), dim=-1
-        )
+        concat_sentence_cls = torch.cat((attn_sentence_output, cls_outputs.unsqueeze(dim=1)), dim=-1)
         # [batch, 1, 2*hidden] -> [batch, 1, hidden]
         concat_sentence_cls = self.sentence_linear(concat_sentence_cls)
 
@@ -234,9 +232,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         start_sentence = start_attn_weights.squeeze(dim=1).argmax(dim=-1)
         # decoder_input : [batch, 1, hidden]
         # decoder_start_index : [batch, hidden]
-        decoder_input, decoder_start_index = self.attn_sequence(
-            cls_outputs, attn_sentence_output, sequence_output
-        )
+        decoder_input, decoder_start_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
 
         #################################################################################
         #################################################################################
@@ -254,9 +250,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         end_sentence = end_attn_weights.squeeze(dim=1).argmax(dim=-1)
         # decoder_input : [batch, 1, hidden]
         # decoder_start_index : [batch, hidden]
-        _, decoder_end_index = self.attn_sequence(
-            cls_outputs, attn_sentence_output, sequence_output
-        )
+        _, decoder_end_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
 
         # outputs : (decoder_start_index, decoder_end_index, cls_index)
         outputs = (

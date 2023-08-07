@@ -15,48 +15,30 @@ from tqdm import tqdm
 
 def train(args, model, tokenizer, logger):
     # 학습에 사용하기 위한 dataset Load
-    train_dataset = load_examples(
-        args, tokenizer, evaluate=False, output_examples=False
-    )
+    train_dataset = load_examples(args, tokenizer, evaluate=False, output_examples=False)
 
     # tokenizing 된 데이터를 batch size만큼 가져오기위한 random sampler 및 DataLoader
     train_sampler = RandomSampler(train_dataset)
-    train_dataloader = DataLoader(
-        train_dataset, sampler=train_sampler, batch_size=args.train_batch_size
-    )
+    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
     # optimization 최적화 schedule 을 위한 전체 training step 계산
-    t_total = (
-        len(train_dataloader)
-        // args.gradient_accumulation_steps
-        * args.num_train_epochs
-    )
+    t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
 
     # Layer에 따른 가중치 decay 적용
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
         {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if not any(nd in n for nd in no_decay)
-            ],
+            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
             "weight_decay": args.weight_decay,
         },
         {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if any(nd in n for nd in no_decay)
-            ],
+            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
             "weight_decay": 0.0,
         },
     ]
 
     # optimizer 및 scheduler 선언
-    optimizer = AdamW(
-        optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon
-    )
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total
     )
@@ -114,11 +96,7 @@ def train(args, model, tokenizer, logger):
 
             # Loss 출력
             if (global_step + 1) % 50 == 0:
-                print(
-                    "{} step processed.. Current Loss : {}".format(
-                        (global_step + 1), loss.item()
-                    )
-                )
+                print("{} step processed.. Current Loss : {}".format((global_step + 1), loss.item()))
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -131,9 +109,7 @@ def train(args, model, tokenizer, logger):
                 # model save
                 if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                     # 모델 저장 디렉토리 생성
-                    output_dir = os.path.join(
-                        args.output_dir, "checkpoint-{}".format(global_step)
-                    )
+                    output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(global_step))
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
 
@@ -146,9 +122,7 @@ def train(args, model, tokenizer, logger):
                 if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                     # Validation Test!!
                     logger.info("***** Eval results *****")
-                    results = evaluate(
-                        args, model, tokenizer, logger, global_step=global_step
-                    )
+                    results = evaluate(args, model, tokenizer, logger, global_step=global_step)
 
     return global_step, tr_loss / global_step
 
@@ -156,18 +130,14 @@ def train(args, model, tokenizer, logger):
 # 정답이 사전부착된 데이터로부터 평가하기 위한 함수
 def evaluate(args, model, tokenizer, logger, global_step=""):
     # 데이터셋 Load
-    dataset, examples, features = load_examples(
-        args, tokenizer, evaluate=True, output_examples=True
-    )
+    dataset, examples, features = load_examples(args, tokenizer, evaluate=True, output_examples=True)
 
     # 최종 출력 파일 저장을 위한 디렉토리 생성
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
     eval_sampler = SequentialSampler(dataset)
-    eval_dataloader = DataLoader(
-        dataset, sampler=eval_sampler, batch_size=args.eval_batch_size
-    )
+    eval_dataloader = DataLoader(dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
     # Eval!
     logger.info("***** Running evaluation {} *****".format(global_step))
@@ -237,18 +207,12 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
     )
 
     # 최종 예측 값을 저장하기 위한 파일 생성
-    output_prediction_file = os.path.join(
-        args.output_dir, "predictions_{}.json".format(global_step)
-    )
-    output_nbest_file = os.path.join(
-        args.output_dir, "nbest_predictions_{}.json".format(global_step)
-    )
+    output_prediction_file = os.path.join(args.output_dir, "predictions_{}.json".format(global_step))
+    output_nbest_file = os.path.join(args.output_dir, "nbest_predictions_{}.json".format(global_step))
 
     # Yes/No Question을 다룰 경우, 각 정답이 유효할 확률 저장을 위한 파일 생성
     if args.version_2_with_negative:
-        output_null_log_odds_file = os.path.join(
-            args.output_dir, "null_odds_{}.json".format(global_step)
-        )
+        output_null_log_odds_file = os.path.join(args.output_dir, "null_odds_{}.json".format(global_step))
     else:
         output_null_log_odds_file = None
 
@@ -280,9 +244,7 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
     # KorQuAD 평가 스크립트 기반 성능 저장을 위한 파일 생성
     output_eval_file = os.path.join(
         output_dir,
-        "eval_result_{}_{}.txt".format(
-            list(filter(None, args.model_name_or_path.split("/"))).pop(), global_step
-        ),
+        "eval_result_{}_{}.txt".format(list(filter(None, args.model_name_or_path.split("/"))).pop(), global_step),
     )
 
     logger.info("***** Official Eval results *****")
@@ -358,12 +320,8 @@ def predict(args, model, tokenizer):
             all_results.append(result)
 
     # 최종 예측 값을 저장하기 위한 파일 생성
-    output_prediction_file = os.path.join(
-        args.output_dir, "predictions_{}.json".format("predict")
-    )
-    output_nbest_file = os.path.join(
-        args.output_dir, "nbest_predictions_{}.json".format("predict")
-    )
+    output_prediction_file = os.path.join(args.output_dir, "predictions_{}.json".format("predict"))
+    output_nbest_file = os.path.join(args.output_dir, "nbest_predictions_{}.json".format("predict"))
 
     # q_id에 대한 N개의 출력 값의 확률로 부터 가장 확률이 높은 최종 예측 값 저장
     predictions = compute_predictions_logits(
