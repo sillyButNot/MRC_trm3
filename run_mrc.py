@@ -8,22 +8,29 @@ from src.model.main_functions import train, evaluate, predict
 from src.model.model import ElectraForQuestionAnswering
 from src.functions.utils import init_logger, set_seed
 from src.functions.processor import SquadResult
+
+
 def create_model(args):
     # 모델 파라미터 Load
     config = ElectraConfig.from_pretrained(
-        args.model_name_or_path if args.from_init_weight else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
+        args.model_name_or_path
+        if args.from_init_weight
+        else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
     )
 
     # tokenizer는 pre-trained된 것을 불러오는 과정이 아닌 불러오는 모델의 vocab 등을 Load
     tokenizer = ElectraTokenizer.from_pretrained(
-        args.model_name_or_path if args.from_init_weight else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
+        args.model_name_or_path
+        if args.from_init_weight
+        else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
         do_lower_case=args.do_lower_case,
-
     )
     model = ElectraForQuestionAnswering.from_pretrained(
-        args.model_name_or_path if args.from_init_weight else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
+        args.model_name_or_path
+        if args.from_init_weight
+        else os.path.join(args.output_dir, "checkpoint-{}".format(args.checkpoint)),
         config=config,
-        from_tf= False
+        from_tf=False,
     )
 
     # vocab 추가
@@ -34,8 +41,7 @@ def create_model(args):
 
     if args.from_init_weight and args.add_vocab:
         if args.from_init_weight:
-            add_token = {
-                "additional_special_tokens": ["[td]", "추가 단어 1", "추가 단어 2"]}
+            add_token = {"additional_special_tokens": ["[td]", "추가 단어 1", "추가 단어 2"]}
             # 추가된 단어는 tokenize 되지 않음
             # ex
             # '[td]' vocab 추가 전 -> ['[', 't', 'd', ']']
@@ -44,6 +50,7 @@ def create_model(args):
             model.resize_token_embeddings(len(tokenizer))
     model.cuda()
     return model, tokenizer
+
 
 def main(cli_args):
     # 파라미터 업데이트
@@ -66,7 +73,8 @@ def main(cli_args):
     elif args.do_predict:
         predict(args, model, tokenizer)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     cli_parser = argparse.ArgumentParser()
 
     # Directory
@@ -117,7 +125,6 @@ if __name__ == '__main__':
     cli_parser.add_argument("--train_file", type=str, default="KorQuAD_v1.0_train.json")
     cli_parser.add_argument("--predict_file", type=str, default="KorQuAD_v1.0_dev.json")
     cli_parser.add_argument("--checkpoint", type=str, default="4000")
-
 
     # 언어 모델링 학습만 완료된 모델 가중치를 사용할것인지 (True)
     # finetune 을 통해 저장된 모델을 사용할 것인지 (False)

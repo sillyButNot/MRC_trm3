@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 def train(args, model, tokenizer, logger):
     # 학습에 사용하기 위한 dataset Load
-    train_dataset = load_examples(
+    train_dataset =load_examples(
         args, tokenizer, evaluate=False, output_examples=False
     )
 
