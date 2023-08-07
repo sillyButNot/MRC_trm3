@@ -151,9 +151,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         # attn_weight = (batch, 1, seq_length)
         # decoder_hidden : (1, batch, hidden_size)
-        attn_weights, decoder_hidden = self.decoder(
-            decoder_input, decoder_hidden, sequence_output
-        )
+        attn_weights, decoder_hidden = self.decoder(decoder_input, decoder_hidden, sequence_output)
         decoder_start_index = attn_weights
         decoder_start_index = decoder_start_index.squeeze(dim=1)
 
@@ -164,9 +162,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         # attn_weight = (batch, 1, seq_length)
         # decoder_hidden : (1, batch, hidden_size)
-        attn_weights, decoder_hidden = self.decoder(
-            decoder_input, decoder_hidden, sequence_output
-        )
+        attn_weights, decoder_hidden = self.decoder(decoder_input, decoder_hidden, sequence_output)
         decoder_end_index = attn_weights.squeeze(dim=1)
 
         outputs = (
