@@ -88,7 +88,7 @@ if __name__ == "__main__":
         default="../MRC_trm3/koelectra-small-v2-discriminator",
     )
 
-    cli_parser.add_argument("--output_dir", type=str, default="./test")
+    cli_parser.add_argument("--output_dir", type=str, default="./test_sentence")
 
     # Model Hyper Parameter
     cli_parser.add_argument("--max_seq_length", type=int, default=512)
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     cli_parser.add_argument("--add_vocab", type=bool, default=False)
 
     # 저희가 갖고있는 데이터를 사용
-    cli_parser.add_argument("--do_train", type=bool, default=False)
+    cli_parser.add_argument("--do_train", type=bool, default=True)
     cli_parser.add_argument("--do_eval", type=bool, default=True)
 
     #

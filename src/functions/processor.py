@@ -123,6 +123,10 @@ def squad_convert_example_to_features(
         if actual_text.find(cleaned_answer_text) == -1:
             logger.warning("Could not find answer: '%s' vs. '%s'", actual_text, cleaned_answer_text)
             return []
+    else:
+        start_position = example.start_position
+        # 일단 똑같이 만들어줌
+        end_position = example.start_position
 
     tok_to_orig_index = []
     orig_to_tok_index = []
@@ -236,9 +240,13 @@ def squad_convert_example_to_features(
             index = len(truncated_query) + sequence_added_tokens + i if tokenizer.padding_side == "right" else i
             token_to_orig_map[index] = tok_to_orig_index[len(spans) * doc_stride + i]
             token_to_sentence_map.append(tok_to_orig_sentence[len(spans) * doc_stride + i])
-            if tok_to_orig_index[len(spans) * doc_stride + i] == tok_start_position and answer_sentence == 1:
-                answer_sentence = tok_to_orig_sentence[len(spans) * doc_stride + i]
 
+            # 계속 바꾸면 비효율적이니까 첫번재 토큰이 왔을 때 문장값을 정답으로 함
+            if (len(spans) * doc_stride + i) == tok_start_position and answer_sentence == 1:
+                answer_sentence = tok_to_orig_sentence[tok_start_position]
+
+        # if answer_sentence == 1:
+        #     print("hi")
         # 맨 마지막 친구는 마지막 인덱스 값을 주어야 하나? -> 특수토큰은 다 질문한테 모이게 할 것
         token_to_sentence_map += question_index
         token_to_sentence_map = token_to_sentence_map[:max_seq_length]
@@ -753,6 +761,8 @@ class SquadProcessor(DataProcessor):
                             start_position_character = answer["answer_start"]
                         else:
                             answers = qa["answers"]
+                            # 추가한 부분 sentence 찾으려면 필요
+                            start_position_character = answers[0]["answer_start"]
 
                     example = SquadExample(
                         qas_id=qas_id,
@@ -765,8 +775,8 @@ class SquadProcessor(DataProcessor):
                         answers=answers,
                     )
                     examples.append(example)
-                    if len(examples) > 1000:
-                        return examples
+                    # if len(examples) > 1000:
+                    #     return examples
 
         return examples
 
@@ -869,7 +879,7 @@ class SquadExample:
         self.sentence_index = sentence_index
 
         # Start and end positions only has a value during evaluation.
-        if start_position_character is not None and not is_impossible:
+        if start_position_character is not None and not is_impossible and answer_text is not None:
             self.start_position = char_to_word_offset[start_position_character]
             self.end_position = char_to_word_offset[
                 min(
@@ -877,6 +887,8 @@ class SquadExample:
                     len(char_to_word_offset) - 1,
                 )
             ]
+        else:
+            self.start_position = char_to_word_offset[start_position_character]
 
 
 class SquadFeatures:
@@ -981,8 +993,6 @@ class SquadResult:
         if start_sentence is not None:
             self.start_sentence = start_sentence
             self.end_sentence = end_sentence
-        else:
-            print("hi")
         if start_top_index:
             self.start_top_index = start_top_index
             self.end_top_index = end_top_index
