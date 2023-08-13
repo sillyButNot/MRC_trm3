@@ -135,7 +135,7 @@ if __name__ == "__main__":
     cli_parser.add_argument("--data_dir", type=str, default="../MRC_trm3/data")
     cli_parser.add_argument("--train_file", type=str, default="KorQuAD_v1.0_train.json")
     cli_parser.add_argument("--predict_file", type=str, default="KorQuAD_v1.0_dev.json")
-    cli_parser.add_argument("--checkpoint", type=str, default="6000")
+    cli_parser.add_argument("--checkpoint", type=str, default="40000")
 
     # 언어 모델링 학습만 완료된 모델 가중치를 사용할것인지 (True)
     # finetune 을 통해 저장된 모델을 사용할 것인지 (False)

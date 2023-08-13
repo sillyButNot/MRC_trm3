@@ -241,12 +241,16 @@ def squad_convert_example_to_features(
             token_to_orig_map[index] = tok_to_orig_index[len(spans) * doc_stride + i]
             token_to_sentence_map.append(tok_to_orig_sentence[len(spans) * doc_stride + i])
 
-            # 계속 바꾸면 비효율적이니까 첫번재 토큰이 왔을 때 문장값을 정답으로 함
-            if (len(spans) * doc_stride + i) == tok_start_position and answer_sentence == 1:
-                answer_sentence = tok_to_orig_sentence[tok_start_position]
+            # # 계속 바꾸면 비효율적이니까 첫번재 토큰이 왔을 때 문장값을 정답으로 함
+            # if (len(spans) * doc_stride + i) == tok_start_position and answer_sentence == 1:
+            #     answer_sentence = tok_to_orig_sentence[tok_start_position]
 
         # if answer_sentence == 1:
-        #     print("hi")
+        #     print("이 문단에는 정답 문장이 없는 경우임. 이런 경우는 cls 벡터도 작게나오겠..? ")
+        #     print(example.qas_id)
+
+        #!!!어차피 평가할 때 보려고 만든 값이니까 그냥 해도 될 것 같음
+        answer_sentence = tok_to_orig_sentence[tok_start_position]
         # 맨 마지막 친구는 마지막 인덱스 값을 주어야 하나? -> 특수토큰은 다 질문한테 모이게 할 것
         token_to_sentence_map += question_index
         token_to_sentence_map = token_to_sentence_map[:max_seq_length]
