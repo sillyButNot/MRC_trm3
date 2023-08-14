@@ -229,12 +229,12 @@ def squad_convert_example_to_features(
         tokens = tokenizer.convert_ids_to_tokens(non_padded_ids)
 
         token_to_sentence_map = []
-        question_index = [1]
-        token_to_sentence_map += question_index * (len(truncated_query) + 2)
+        padding_index = [0]
+        token_to_sentence_map += padding_index * (len(truncated_query) + 2)
         token_to_orig_map = {}
 
         # 정답이 없는 문단인 경우에는 질문 인덱스로 지정
-        answer_sentence = 1
+        answer_sentence = 0
 
         for i in range(paragraph_len):
             index = len(truncated_query) + sequence_added_tokens + i if tokenizer.padding_side == "right" else i
@@ -252,9 +252,9 @@ def squad_convert_example_to_features(
         #!!!어차피 평가할 때 보려고 만든 값이니까 그냥 해도 될 것 같음
         answer_sentence = tok_to_orig_sentence[tok_start_position]
         # 맨 마지막 친구는 마지막 인덱스 값을 주어야 하나? -> 특수토큰은 다 질문한테 모이게 할 것
-        token_to_sentence_map += question_index
+        token_to_sentence_map += padding_index
         token_to_sentence_map = token_to_sentence_map[:max_seq_length]
-        padding = [0] * (max_seq_length - len(token_to_sentence_map))
+        padding = padding_index * (max_seq_length - len(token_to_sentence_map))
         token_to_sentence_map = token_to_sentence_map + padding
 
         encoded_dict["paragraph_len"] = paragraph_len
@@ -838,7 +838,7 @@ class SquadExample:
         char_to_word_offset = []
         prev_is_whitespace = True
 
-        sentence_number = 2
+        sentence_number = 1
         # Split on whitespace so that different tokens may be attributed to their original position.
 
         for sentence in sentences:

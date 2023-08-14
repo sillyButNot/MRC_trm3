@@ -252,9 +252,9 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
             decoder_input, decoder_hidden, sentence_representation, sentence_mask_result
         )
 
-        # start_sentence : [batch,1]
-        # start_sentence = start_attn_weights.squeeze(dim=1).argmax(dim=-1)
-        start_sentence = start_attn_weights.squeeze(dim=1).argmax(dim=-1)
+        # start_sentence : (batch, 3)
+        _, start_sentence = start_attn_weights.squeeze(dim=1).topk(3, dim=-1)
+
         # decoder_input : [batch, 1, hidden]
         # decoder_start_index : [batch, hidden]
         decoder_input, decoder_start_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
@@ -271,8 +271,10 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         attn_sentence_output, decoder_hidden, end_attn_weights = self.decoder(
             decoder_input, decoder_hidden, sentence_representation, sentence_mask_result
         )
-        # end_sentence : [batch,1]
-        end_sentence = end_attn_weights.squeeze(dim=1).argmax(dim=-1)
+
+        # end_sentence : (batch, 3)
+        _, end_sentence = start_attn_weights.squeeze(dim=1).topk(3, dim=-1)
+
         # decoder_input : [batch, 1, hidden]
         # decoder_start_index : [batch, hidden]
         _, decoder_end_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
