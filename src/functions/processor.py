@@ -982,7 +982,7 @@ class SquadResult:
         unique_id,
         start_logits,
         end_logits,
-        cls_logits,
+        cls_logits=None,
         start_sentence=None,
         end_sentence=None,
         start_top_index=None,

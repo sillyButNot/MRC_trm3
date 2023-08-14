@@ -114,7 +114,6 @@ def compute_predictions_logits(
             "end_index",
             "start_logit",
             "end_logit",
-            "cls_logit",
             "start_sentence",
             "end_sentence",
             "answer_sentence",
@@ -176,7 +175,6 @@ def compute_predictions_logits(
                             end_index=end_index,
                             start_logit=result.start_logits[start_index],
                             end_logit=result.end_logits[end_index],
-                            cls_logit=result.cls_logits,
                             start_sentence=result.start_sentence,
                             end_sentence=result.end_sentence,
                             answer_sentence=feature.answer_sentence,
@@ -191,7 +189,6 @@ def compute_predictions_logits(
                     end_index=0,
                     start_logit=null_start_logit,
                     end_logit=null_end_logit,
-                    cls_logit=null_cls_logit,
                     start_sentence=result.start_sentence,
                     end_sentence=result.end_sentence,
                     answer_sentence=feature.answer_sentence,
@@ -199,7 +196,7 @@ def compute_predictions_logits(
             )
         prelim_predictions = sorted(
             prelim_predictions,
-            key=lambda x: (x.cls_logit, x.start_logit + x.end_logit),
+            key=lambda x: (x.start_logit + x.end_logit),
             reverse=True,
         )
 
@@ -209,7 +206,6 @@ def compute_predictions_logits(
                 "text",
                 "start_logit",
                 "end_logit",
-                "cls_logit",
                 "start_sentence",
                 "end_sentence",
                 "answer_sentence",
@@ -255,7 +251,6 @@ def compute_predictions_logits(
                     text=final_text,
                     start_logit=pred.start_logit,
                     end_logit=pred.end_logit,
-                    cls_logit=pred.cls_logit,
                     start_sentence=pred.start_sentence,
                     end_sentence=pred.end_sentence,
                     answer_sentence=pred.answer_sentence,
@@ -269,7 +264,6 @@ def compute_predictions_logits(
                         text="",
                         start_logit=null_start_logit,
                         end_logit=null_end_logit,
-                        cls_logit=null_cls_logit,
                         start_sentence=pred.start_sentence,
                         end_sentence=pred.end_sentence,
                         answer_sentence=pred.answer_sentence,
@@ -285,7 +279,6 @@ def compute_predictions_logits(
                         text="empty",
                         start_logit=0.0,
                         end_logit=0.0,
-                        cls_logit=0.0,
                         start_sentence=0.0,
                         end_sentence=0.0,
                         answer_sentence=0.0,
@@ -300,7 +293,6 @@ def compute_predictions_logits(
                     text="empty",
                     start_logit=0.0,
                     end_logit=0.0,
-                    cls_logit=0.0,
                     start_sentence=0.0,
                     end_sentence=0.0,
                     answer_sentence=0.0,
@@ -326,7 +318,6 @@ def compute_predictions_logits(
             output["probability"] = probs[i]
             output["start_logit"] = entry.start_logit
             output["end_logit"] = entry.end_logit
-            output["cls_logit"] = entry.cls_logit
             output["start_sentence"] = entry.start_sentence
             output["end_sentence"] = entry.end_sentence
             output["answer_sentence"] = entry.answer_sentence

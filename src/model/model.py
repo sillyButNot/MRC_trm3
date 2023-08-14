@@ -168,7 +168,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # sequence_output : [batch_size, seq_length, hidden_size] 16 512 256
         sequence_output = outputs[0]
         cls_outputs = sequence_output[:, 0, :]
-        cls_logits = self.cls_linear(cls_outputs)
 
         ##########################################################################
         # start_logits : (batch, seq_length, hidden)
@@ -178,7 +177,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         ##########################################################################
         # outputs = (start_logits, end_logits, cls_linear)
-        outputs = (cls_logits,) + outputs[1:]
 
         #####################################################
         batch_size = sequence_output.size()[0]
@@ -191,7 +189,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         sentence_one_hot = F.one_hot(sentence_map, num_classes=self.max_sentence_number)
         sentence_one_hot[sentence_map == 0] = 0
         # sentence_one_hot : [batch, seq_length, sentence_number] -> [batch, sentence_number, seq_length]
-        sentence_one_hot = sentence_one_hot.type(torch.FloatTensor).transpose(1, 2)
+        sentence_one_hot = sentence_one_hot.float().transpose(1, 2)
         # sentence_representation :[batch, sentence_number, seq_length] * [batch_size, seq_length, hidden_size]
         # = [batch, sentence_number, hidden_size]
 
@@ -279,11 +277,11 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # decoder_start_index : [batch, hidden]
         _, decoder_end_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
 
-        # outputs : (decoder_start_index, decoder_end_index, cls_index)
+        # outputs : (decoder_start_index, decoder_end_index)
         outputs = (
             decoder_start_index,
             decoder_end_index,
-        ) + outputs
+        )
 
         # 학습 시
         if start_positions is not None and end_positions is not None:
@@ -302,15 +300,14 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
             # start/end에 대해 loss 계산
             start_loss = loss_fct(decoder_start_index, start_positions)
             end_loss = loss_fct(decoder_end_index, end_positions)
-            cls_loss = loss_fct(cls_logits, is_answer)
 
             # 최종 loss 계산
-            total_loss = (start_loss + end_loss + cls_loss) / 3
+            total_loss = (start_loss + end_loss) / 2
 
-            # outputs : (total_loss, start_logits, end_logits, cls_logits)
+            # outputs : (total_loss, start_logits, end_logits)
             outputs = (total_loss,) + outputs
         else:
-            # outputs : (start_sentence, end_sentence, start_logits, end_logits, cls_logits)
+            # outputs : (start_sentence, end_sentence, start_logits, end_logits)
             outputs = (
                 start_sentence,
                 end_sentence,
