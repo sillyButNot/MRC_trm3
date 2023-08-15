@@ -901,16 +901,13 @@ class SquadResult:
         unique_id,
         start_logits,
         end_logits,
-        cls_logits,
         start_top_index=None,
         end_top_index=None,
     ):
         self.start_logits = start_logits
         self.end_logits = end_logits
         self.unique_id = unique_id
-        self.cls_logits = cls_logits
 
         if start_top_index:
             self.start_top_index = start_top_index
             self.end_top_index = end_top_index
-            self.cls_logits = cls_logits

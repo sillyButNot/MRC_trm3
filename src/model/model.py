@@ -73,7 +73,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         self.electra = ElectraModel(config)
 
         # 정답이 있는 문단인지 확인
-        self.cls_linear = nn.Linear(config.hidden_size, 2)
         self.start_linear = nn.Linear(config.hidden_size, config.hidden_size)
         self.end_linear = nn.Linear(config.hidden_size, config.hidden_size)
 
@@ -116,7 +115,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # sequence_output : [batch_size, seq_length, hidden_size] 16 512 256
         sequence_output = outputs[0]
         cls_outputs = sequence_output[:, 0, :]
-        cls_logits = self.cls_linear(cls_outputs)
 
         ##########################################################################
         # start_logits : (batch, seq_length, hidden)
@@ -125,8 +123,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # end_logits = self.end_linear(sequence_output)
 
         ##########################################################################
-        # outputs = (start_logits, end_logits, cls_linear)
-        outputs = (cls_logits,) + outputs[1:]
 
         #####################################################
         batch_size = sequence_output.size()[0]
@@ -168,7 +164,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         outputs = (
             decoder_start_index,
             decoder_end_index,
-        ) + outputs
+        )
 
         # 학습 시
         if start_positions is not None and end_positions is not None:
@@ -187,12 +183,11 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
             # start/end에 대해 loss 계산
             start_loss = loss_fct(decoder_start_index, start_positions)
             end_loss = loss_fct(decoder_end_index, end_positions)
-            cls_loss = loss_fct(cls_logits, is_answer)
 
             # 최종 loss 계산
-            total_loss = (start_loss + end_loss + cls_loss) / 3
+            total_loss = (start_loss + end_loss) / 2
 
-            # outputs : (total_loss, start_logits, end_logits, cls_logits)
+            # outputs : (total_loss, start_logits, end_logits)
             outputs = (total_loss,) + outputs
 
         return outputs

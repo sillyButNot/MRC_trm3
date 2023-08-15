@@ -114,7 +114,6 @@ def compute_predictions_logits(
             "end_index",
             "start_logit",
             "end_logit",
-            "cls_logit",
         ],
     )
 
@@ -171,7 +170,6 @@ def compute_predictions_logits(
                             end_index=end_index,
                             start_logit=result.start_logits[start_index],
                             end_logit=result.end_logits[end_index],
-                            cls_logit=result.cls_logits,
                         )
                     )
         if version_2_with_negative:
@@ -182,17 +180,16 @@ def compute_predictions_logits(
                     end_index=0,
                     start_logit=null_start_logit,
                     end_logit=null_end_logit,
-                    cls_logit=null_cls_logit,
                 )
             )
         prelim_predictions = sorted(
             prelim_predictions,
-            key=lambda x: (x.cls_logit, x.start_logit + x.end_logit),
+            key=lambda x: (x.start_logit + x.end_logit),
             reverse=True,
         )
 
         _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-            "NbestPrediction", ["text", "start_logit", "end_logit", "cls_logit"]
+            "NbestPrediction", ["text", "start_logit", "end_logit"]
         )
 
         seen_predictions = {}
