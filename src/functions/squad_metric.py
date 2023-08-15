@@ -231,7 +231,6 @@ def compute_predictions_logits(
                     text=final_text,
                     start_logit=pred.start_logit,
                     end_logit=pred.end_logit,
-                    cls_logit=pred.cls_logit,
                 )
             )
         # if we didn't include the empty option in the n-best, include it
@@ -242,22 +241,18 @@ def compute_predictions_logits(
                         text="",
                         start_logit=null_start_logit,
                         end_logit=null_end_logit,
-                        cls_logit=null_cls_logit,
                     )
                 )
 
             # In very rare edge cases we could only have single null prediction.
             # So we just create a nonce prediction in this case to avoid failure.
             if len(nbest) == 1:
-                nbest.insert(
-                    0,
-                    _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0, cls_logit=0.0),
-                )
+                nbest.insert(0, _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
 
         # In very rare edge cases we could have no valid predictions. So we
         # just create a nonce prediction in this case to avoid failure.
         if not nbest:
-            nbest.append(_NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0, cls_logit=0.0))
+            nbest.append(_NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
 
         assert len(nbest) >= 1, "No valid predictions"
 
@@ -278,7 +273,6 @@ def compute_predictions_logits(
             output["probability"] = probs[i]
             output["start_logit"] = entry.start_logit
             output["end_logit"] = entry.end_logit
-            output["cls_logit"] = entry.cls_logit
             nbest_json.append(output)
 
         assert len(nbest_json) >= 1, "No valid predictions"
