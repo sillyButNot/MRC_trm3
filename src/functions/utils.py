@@ -4,18 +4,12 @@ import torch
 import numpy as np
 import os
 
-from src.functions.processor import (
-    SquadV1Processor,
-    SquadV2Processor,
-    squad_convert_examples_to_features,
-)
+from src.functions.processor import SquadV1Processor, SquadV2Processor, squad_convert_examples_to_features
 
 
 def init_logger():
     logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.INFO
     )
 
 
@@ -33,14 +27,7 @@ def to_list(tensor):
 
 
 # dataset을 load 하는 함수
-def load_examples(
-    args,
-    tokenizer,
-    evaluate=False,
-    output_examples=False,
-    do_predict=False,
-    input_dict=None,
-):
+def load_examples(args, tokenizer, evaluate=False, output_examples=False, do_predict=False, input_dict=None):
     """
 
     :param args: 하이퍼 파라미터
@@ -58,23 +45,17 @@ def load_examples(
     print("Creating features from dataset file at {}".format(input_dir))
 
     # processor 선언
-    processor = (
-        SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
-    )
+    processor = SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
 
     # open test 시
     if do_predict:
         examples = processor.get_example_from_input(input_dict)
     # 평가 시
     elif evaluate:
-        examples = processor.get_dev_examples(
-            os.path.join(args.data_dir), filename=args.predict_file
-        )
+        examples = processor.get_dev_examples(os.path.join(args.data_dir), filename=args.predict_file)
     # 학습 시
     else:
-        examples = processor.get_train_examples(
-            os.path.join(args.data_dir), filename=args.train_file
-        )
+        examples = processor.get_train_examples(os.path.join(args.data_dir), filename=args.train_file)
     features, dataset = squad_convert_examples_to_features(
         examples=examples,
         tokenizer=tokenizer,
@@ -91,9 +72,7 @@ def load_examples(
 
 
 def load_input_data(args, tokenizer, question, context):
-    processor = (
-        SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
-    )
+    processor = SquadV2Processor() if args.version_2_with_negative else SquadV1Processor()
     example = [processor.example_from_input(question, context)]
     features, dataset = squad_convert_examples_to_features(
         examples=example,
