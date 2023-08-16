@@ -87,17 +87,17 @@ class rnn_Decoder(nn.Module):
         # [batch, 1, hidden_size] * [batch, hidden_size, sentence_number] = [batch, 1, sentence_number]
         attn_weights = torch.bmm(l_rnn_output, sentence_representation.permute(0, 2, 1))
 
-        # attn_weights : [batch, 1, sentence_number] -> 문장단위의 확률값?
-        attn_weights = F.softmax(attn_weights + sentence_mask.unsqueeze(dim=1), dim=-1)
+        # attn_score : [batch, 1, sentence_number] -> 문장단위의 확률값?
+        attn_score = F.softmax(attn_weights + sentence_mask.unsqueeze(dim=1), dim=-1)
 
         # attn_output : [batch, 1, sentence_number] * [batch, sentence_number, hidden_size]
         # = [batch, 1, hidden]
-        attn_sentence_output = torch.bmm(attn_weights, sentence_representation)
+        attn_sentence_output = torch.bmm(attn_score, sentence_representation)
 
         # attn_weight =  (batch, 1, seq_length)
         # rnn_hidden : (1, batch, hidden_size)
         # attn_sentence_output : (batch, 1, hidden)
-        return attn_sentence_output, rnn_hidden, attn_weights
+        return attn_sentence_output, rnn_hidden, attn_score
 
 
 class ElectraForQuestionAnswering(ElectraPreTrainedModel):
@@ -198,20 +198,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         sentence_representation = torch.bmm(sentence_one_hot, sequence_output)
 
-        # 이렇게 짜면 안된다!!!!
-        # sentence_max_sentence = sentence_map.max(dim=-1)
-        # sentence_mask_result = []
-        # for j in sentence_max_sentence.values:
-        #     sentence_mask = []
-        #     # 0번째는 어차피 패딩에 대한 sentence_number?
-        #     sentence_mask.append(float("-inf"))
-        #     # 남은 1번부터 ~~ 최대 문장범위까지는 넣어줘야하고,
-        #     sentence_mask = sentence_mask + [0] * int(j)
-        #     # 남은 패딩 부분은 다시 -inf 를 넣어주기
-        #     sentence_mask = sentence_mask + ([float("-inf")] * (self.max_sentence_number - len(sentence_mask)))
-        #     sentence_mask_result.append(sentence_mask)
-        # sentence_mask_result = torch.tensor(sentence_mask_result)
-
         # sentence_representation : (batch, sentence_number, hidden)
         # 더해서 0이 되는 부분은 애초에 패딩일 것임.
         # sentence_mask : (batch, sentence_number)
@@ -253,9 +239,13 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # start_sentence : (batch, 3)
         _, start_sentence = start_attn_weights.squeeze(dim=1).topk(3, dim=-1)
 
+        # start_ 부분에서는 그냥 문장 단위의 input을 넣어줄 계획
+        # attn_sentence_output : (batch, 1, hidden)
+        decoder_input = attn_sentence_output
+
         # decoder_input : [batch, 1, hidden]
         # decoder_start_index : [batch, hidden]
-        decoder_input, decoder_start_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
+        _, decoder_start_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
 
         #################################################################################
         #################################################################################
@@ -274,7 +264,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         _, end_sentence = start_attn_weights.squeeze(dim=1).topk(3, dim=-1)
 
         # decoder_input : [batch, 1, hidden]
-        # decoder_start_index : [batch, hidden]
+        # decoder_end_index : [batch, hidden]
         _, decoder_end_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
 
         # outputs : (decoder_start_index, decoder_end_index)
