@@ -19,3 +19,11 @@ ver.3
 -> sentence attention 사용
 test_sentence 폴더에 결과가 있음
 
+ver.4
+중간에 end 쪽 decoder input 하는 부분에서 문장단위만 넣어줌
+
+ver.5
+ver.4에서 문장단위만 넣는 것이 이상함, start_index 값을 보고 추론할 수 있도록 하기 위해 rnn_decoder 를 사용하는 것이기 때문에 start_index 관련 내용을 concat 해서 넣어줌
+
+ver.6
+-> decoder 초기 input 부터 context 벡터를 따로 만들어서 시작
