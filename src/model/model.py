@@ -132,6 +132,8 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         self.decoder = rnn_Decoder(config=config, hidden_size=self.hidden_size)
         self.attn_sequence = attn_sequence(self.hidden_size)
 
+        self.start_decoder_linear = nn.Linear(2 * config.hidden_size, config.hidden_size)
+
     def forward(
         self,
         input_ids=None,
@@ -241,12 +243,17 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         # start_ 부분에서는 그냥 문장 단위의 input을 넣어줄 계획
         # attn_sentence_output : (batch, 1, hidden)
-        decoder_input = attn_sentence_output
 
-        # decoder_input : [batch, 1, hidden]
-        # decoder_start_index : [batch, hidden]
-        _, decoder_start_index = self.attn_sequence(cls_outputs, attn_sentence_output, sequence_output)
+        # decoder_start_token : [batch, 1, hidden]
+        # decoder_start_index : [batch, max_length]
+        decoder_start_token, decoder_start_index = self.attn_sequence(
+            cls_outputs, attn_sentence_output, sequence_output
+        )
 
+        # decoder_start_token : [batch, 1, hidden]
+        # attn_sentence_output : (batch, 1, hidden) -
+        # decoder_input : [batch, 1,  2* hidden] -> (batch, 1, hidden)
+        decoder_input = self.start_decoder_linear(torch.cat((attn_sentence_output, decoder_start_token), dim=-1))
         #################################################################################
         #################################################################################
         #                                          end
