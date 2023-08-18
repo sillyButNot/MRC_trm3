@@ -116,6 +116,7 @@ def compute_predictions_logits(
             "end_logit",
             "start_sentence",
             "end_sentence",
+            "start_end_sum_logits",
             "answer_sentence",
         ],
     )
@@ -177,6 +178,7 @@ def compute_predictions_logits(
                             end_logit=result.end_logits[end_index],
                             start_sentence=result.start_sentence,
                             end_sentence=result.end_sentence,
+                            start_end_sum_logits=result.start_end_sum_logits,
                             answer_sentence=feature.answer_sentence,
                         )
                     )
@@ -191,6 +193,7 @@ def compute_predictions_logits(
                     end_logit=null_end_logit,
                     start_sentence=result.start_sentence,
                     end_sentence=result.end_sentence,
+                    start_end_sum_logits=result.start_end_sum_logits,
                     answer_sentence=feature.answer_sentence,
                 )
             )
@@ -208,6 +211,7 @@ def compute_predictions_logits(
                 "end_logit",
                 "start_sentence",
                 "end_sentence",
+                "start_end_sum_logits",
                 "answer_sentence",
             ],
         )
@@ -253,6 +257,7 @@ def compute_predictions_logits(
                     end_logit=pred.end_logit,
                     start_sentence=pred.start_sentence,
                     end_sentence=pred.end_sentence,
+                    start_end_sum_logits=pred.start_end_sum_logits,
                     answer_sentence=pred.answer_sentence,
                 )
             )
@@ -266,6 +271,7 @@ def compute_predictions_logits(
                         end_logit=null_end_logit,
                         start_sentence=pred.start_sentence,
                         end_sentence=pred.end_sentence,
+                        start_end_sum_logits=pred.start_end_sum_logits,
                         answer_sentence=pred.answer_sentence,
                     )
                 )
@@ -281,6 +287,7 @@ def compute_predictions_logits(
                         end_logit=0.0,
                         start_sentence=0.0,
                         end_sentence=0.0,
+                        start_end_sum_logits=0.0,
                         answer_sentence=0.0,
                     ),
                 )
@@ -295,6 +302,7 @@ def compute_predictions_logits(
                     end_logit=0.0,
                     start_sentence=0.0,
                     end_sentence=0.0,
+                    start_end_sum_logits=0.0,
                     answer_sentence=0.0,
                 )
             )
@@ -320,6 +328,7 @@ def compute_predictions_logits(
             output["end_logit"] = entry.end_logit
             output["start_sentence"] = entry.start_sentence
             output["end_sentence"] = entry.end_sentence
+            output["start_end_sum_logits"] = entry.start_end_sum_logits
             output["answer_sentence"] = entry.answer_sentence
             nbest_json.append(output)
 
