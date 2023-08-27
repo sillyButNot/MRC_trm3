@@ -235,9 +235,9 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # end_sentence : (batch, 3)
         _, end_sentence = attn_token_sentence_for_end_score.squeeze(dim=1).topk(3, dim=-1)
         # start_end_sum_logits : (batch, max_length)
-        _, start_end_sum_logits = (start_end_sum_logits + attn_token_sentence_for_end_weight.squeeze(dim=1)).topk(
-            3, dim=-1
-        )
+        start_end_sum_logits = start_end_sum_logits + attn_token_sentence_for_end_weight.squeeze(dim=1)
+
+        _, start_end_sum_logits = (start_end_sum_logits + sentence_mask_result).topk(3, dim=-1)
 
         #################################################################################
         #################################################################################
