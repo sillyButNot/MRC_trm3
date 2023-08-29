@@ -88,7 +88,7 @@ if __name__ == "__main__":
         default="../MRC_trm3/koelectra-small-v2-discriminator",
     )
 
-    cli_parser.add_argument("--output_dir", type=str, default="./test_ver.7")
+    cli_parser.add_argument("--output_dir", type=str, default="./test_ver.8")
 
     # Model Hyper Parameter
     cli_parser.add_argument("--max_seq_length", type=int, default=512)
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     cli_parser.add_argument("--n_best_size", type=int, default=20)
 
     #!!! add sentence max index
-    cli_parser.add_argument("--max_sentence_number", type=int, default=160)
+    cli_parser.add_argument("--max_sentence_number", type=int, default=30)
 
     # Training Parameter
     cli_parser.add_argument("--learning_rate", type=float, default=5e-5)

@@ -126,7 +126,7 @@ def squad_convert_example_to_features(
     else:
         start_position = example.start_position
         # 일단 똑같이 만들어줌
-        end_position = example.start_position
+        end_position = example.end_position
 
     tok_to_orig_index = []
     orig_to_tok_index = []
@@ -232,24 +232,23 @@ def squad_convert_example_to_features(
         padding_index = [0]
         token_to_sentence_map += padding_index * (len(truncated_query) + 2)
         token_to_orig_map = {}
-
+        doc_sentence_orig_map = {}  # 해당 토큰 인덱스에서의 문장번호가 사실은 어떤 문장인지?
+        # 학습에서 사용할 문장의 시작 문장번호
+        start_sentence = tok_to_orig_sentence[len(spans) * doc_stride]
         # 정답이 없는 문단인 경우에는 질문 인덱스로 지정
         answer_sentence = 0
-
+        # if (tok_to_orig_sentence[len(spans) * doc_stride + 0]) != 1:
+        #     print("hi")
         for i in range(paragraph_len):
             index = len(truncated_query) + sequence_added_tokens + i if tokenizer.padding_side == "right" else i
             token_to_orig_map[index] = tok_to_orig_index[len(spans) * doc_stride + i]
-            token_to_sentence_map.append(tok_to_orig_sentence[len(spans) * doc_stride + i])
+            # 시작 문장을 1로 시작하게 함 지역적으로 문장번호를 매겨주는 거임
+            token_to_sentence_map.append(tok_to_orig_sentence[len(spans) * doc_stride + i] - start_sentence + 1)
 
-            # # 계속 바꾸면 비효율적이니까 첫번재 토큰이 왔을 때 문장값을 정답으로 함
-            # if (len(spans) * doc_stride + i) == tok_start_position and answer_sentence == 1:
-            #     answer_sentence = tok_to_orig_sentence[tok_start_position]
+            doc_sentence_orig_map[
+                tok_to_orig_sentence[len(spans) * doc_stride + i] - start_sentence + 1
+            ] = tok_to_orig_sentence[len(spans) * doc_stride + i]
 
-        # if answer_sentence == 1:
-        #     print("이 문단에는 정답 문장이 없는 경우임. 이런 경우는 cls 벡터도 작게나오겠..? ")
-        #     print(example.qas_id)
-
-        #!!!어차피 평가할 때 보려고 만든 값이니까 그냥 해도 될 것 같음
         answer_sentence = tok_to_orig_sentence[tok_start_position]
         # 맨 마지막 친구는 마지막 인덱스 값을 주어야 하나? -> 특수토큰은 다 질문한테 모이게 할 것
         token_to_sentence_map += padding_index
@@ -260,6 +259,7 @@ def squad_convert_example_to_features(
         encoded_dict["paragraph_len"] = paragraph_len
         encoded_dict["tokens"] = tokens
         encoded_dict["token_to_orig_map"] = token_to_orig_map
+        encoded_dict["doc_sentence_orig_map"] = doc_sentence_orig_map
         encoded_dict["token_to_sentence_map"] = token_to_sentence_map
         encoded_dict["truncated_query_with_special_tokens_length"] = len(truncated_query) + sequence_added_tokens
         encoded_dict["token_is_max_context"] = {}
@@ -356,6 +356,7 @@ def squad_convert_example_to_features(
                 token_is_max_context=span["token_is_max_context"],
                 tokens=span["tokens"],
                 token_to_orig_map=span["token_to_orig_map"],
+                doc_sentence_orig_map=span["doc_sentence_orig_map"],
                 start_position=start_position,
                 end_position=end_position,
                 is_impossible=span_is_impossible,
@@ -939,6 +940,7 @@ class SquadFeatures:
         is_impossible,
         is_answer,
         token_to_sentence_map,
+        doc_sentence_orig_map,
         answer_sentence,
         qas_id: str = None,
         encoding: BatchEncoding = None,
@@ -956,6 +958,7 @@ class SquadFeatures:
         self.tokens = tokens
         self.token_to_orig_map = token_to_orig_map
         self.token_to_sentence_map = token_to_sentence_map
+        self.doc_sentence_orig_map = doc_sentence_orig_map
         self.answer_sentence = answer_sentence
         self.is_answer = is_answer
 

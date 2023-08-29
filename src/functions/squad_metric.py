@@ -141,6 +141,25 @@ def compute_predictions_logits(
 
             start_indexes = _get_best_indexes(result.start_logits, n_best_size)
             end_indexes = _get_best_indexes(result.end_logits, n_best_size)
+            start_sentence = []
+            end_sentence = []
+            for i in result.start_sentence:
+                if i == 0:
+                    start_sentence.append(0)
+                else:
+                    if i not in feature.doc_sentence_orig_map.keys():
+                        start_sentence.append(-1)
+                    else:
+                        start_sentence.append(feature.doc_sentence_orig_map[i])
+            for j in result.end_sentence:
+                if j == 0:
+                    end_sentence.append(0)
+                else:
+                    if j not in feature.doc_sentence_orig_map.keys():
+                        end_sentence.append(-1)
+                    else:
+                        end_sentence.append(feature.doc_sentence_orig_map[j])
+
             # if we could have irrelevant answers, get the min score of irrelevant
             if version_2_with_negative:
                 feature_null_score = result.start_logits[0] + result.end_logits[0]
@@ -169,6 +188,7 @@ def compute_predictions_logits(
                     length = end_index - start_index + 1
                     if length > max_answer_length:
                         continue
+
                     prelim_predictions.append(
                         _PrelimPrediction(
                             feature_index=feature_index,
@@ -176,8 +196,8 @@ def compute_predictions_logits(
                             end_index=end_index,
                             start_logit=result.start_logits[start_index],
                             end_logit=result.end_logits[end_index],
-                            start_sentence=result.start_sentence,
-                            end_sentence=result.end_sentence,
+                            start_sentence=start_sentence,
+                            end_sentence=end_sentence,
                             start_end_sum_logits=result.start_end_sum_logits,
                             answer_sentence=feature.answer_sentence,
                         )

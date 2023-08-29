@@ -156,9 +156,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # sentence_representation :[batch, sentence_number, seq_length] * [batch_size, seq_length, hidden_size]
         # = [batch, sentence_number, hidden_size]
 
-        if sequence_output.device != sentence_one_hot.device:
-            sentence_one_hot = sentence_one_hot.to(sequence_output.device)
-
         sentence_representation = torch.bmm(sentence_one_hot, sequence_output)
 
         # sentence_representation : (batch, sentence_number, hidden)
