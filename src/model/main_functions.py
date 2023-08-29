@@ -184,16 +184,14 @@ def evaluate(args, model, tokenizer, logger, global_step=""):
 
             # start_logits: [batch_size, max_length]
             # end_logits: [batch_size, max_length]
-            start_sentence, end_sentence, start_end_sum_logits, start_logits, end_logits = output
+            sentence_logits, start_logits, end_logits = output
 
             # q_id에 대한 예측 정답 시작/끝 위치 확률 저장
             result = SquadResult(
                 unique_id,
                 start_logits,
                 end_logits,
-                start_end_sum_logits=start_end_sum_logits,
-                start_sentence=start_sentence,
-                end_sentence=end_sentence,
+                sentence_logits=sentence_logits,
             )
 
             # feature에 종속되는 최종 출력 값을 리스트에 저장

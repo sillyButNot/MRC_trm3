@@ -5,7 +5,7 @@ import torch
 # from transformers import ElectraModel, ElectraPreTrainedModel
 from transformers.models.electra import ElectraModel, ElectraPreTrainedModel
 import torch.nn.functional as F
-
+from collections import Counter
 
 # from transformers.models.electra import ElectraModel, ElectraPreTrainedModel
 
@@ -155,9 +155,12 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         sentence_one_hot = sentence_one_hot.float().transpose(1, 2)
         # sentence_representation :[batch, sentence_number, seq_length] * [batch_size, seq_length, hidden_size]
         # = [batch, sentence_number, hidden_size]
-
         sentence_representation = torch.bmm(sentence_one_hot, sequence_output)
 
+        # electra 토큰을 문장 단위로 sum 할 때 평균 내주기 위함
+        # count_sentence : (batch, sentence_number)
+        count_sentence_number = sentence_one_hot.sum(dim=-1)
+        sentence_representation = sentence_representation / count_sentence_number.unsqueeze(dim=-1)
         # sentence_representation : (batch, sentence_number, hidden)
         # 더해서 0이 되는 부분은 애초에 패딩일 것임.
         # sentence_mask : (batch, sentence_number)
@@ -187,8 +190,8 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
             cls_outputs.unsqueeze(dim=1), sentence_representation, sentence_mask_result.unsqueeze(dim=1)
         )
         # start_sentence : (batch, 3)
-        _, start_sentence = context_score.squeeze(dim=1).topk(3, dim=-1)
-        start_end_sum_logits = context_weight.squeeze(dim=1)
+        # 원래는 score 로 top3
+        _, sentence_logits = context_weight.squeeze(dim=1).topk(3, dim=-1)
 
         #!!!decoder_input = (bathc, 1, 2* hidden)
         decoder_input = torch.cat((cls_outputs.unsqueeze(dim=1), context_vector), dim=-1)
@@ -222,19 +225,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # sentence_representation = [batch, sentence_number, hidden_size]
         # attn_token_sentence_for_end : (batch, 1, hidden)
         # attn_token_sentence_for_end_score : (batch, 1, sentence_number)
-
-        (
-            attn_token_sentence_for_end_weight,
-            attn_token_sentence_for_end_score,
-            attn_token_sentence_for_end,
-        ) = self.attn_sequence(attn_rnn_electra, sentence_representation, sentence_mask_result.unsqueeze(dim=1))
-
-        # end_sentence : (batch, 3)
-        _, end_sentence = attn_token_sentence_for_end_score.squeeze(dim=1).topk(3, dim=-1)
-        # start_end_sum_logits : (batch, max_length)
-        start_end_sum_logits = start_end_sum_logits + attn_token_sentence_for_end_weight.squeeze(dim=1)
-
-        _, start_end_sum_logits = (start_end_sum_logits + sentence_mask_result).topk(3, dim=-1)
 
         #################################################################################
         #################################################################################
@@ -291,11 +281,7 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
             # outputs : (total_loss, start_logits, end_logits)
             outputs = (total_loss,) + outputs
         else:
-            # outputs : (start_sentence, end_sentence, start_logits, end_logits)
-            outputs = (
-                start_sentence,
-                end_sentence,
-                start_end_sum_logits,
-            ) + outputs
+            # outputs : (sentence_logits, start_logits, end_logits)
+            outputs = (sentence_logits,) + outputs
 
         return outputs

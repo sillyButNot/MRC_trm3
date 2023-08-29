@@ -780,8 +780,8 @@ class SquadProcessor(DataProcessor):
                         answers=answers,
                     )
                     examples.append(example)
-                    # if len(examples) > 1000:
-                    #     return examples
+                    if len(examples) > 1000:
+                        return examples
 
         return examples
 
@@ -986,9 +986,7 @@ class SquadResult:
         start_logits,
         end_logits,
         cls_logits=None,
-        start_sentence=None,
-        end_sentence=None,
-        start_end_sum_logits=None,
+        sentence_logits=None,
         start_top_index=None,
         end_top_index=None,
     ):
@@ -996,11 +994,8 @@ class SquadResult:
         self.end_logits = end_logits
         self.unique_id = unique_id
         self.cls_logits = cls_logits
+        self.sentence_logits = sentence_logits
 
-        if start_sentence is not None:
-            self.start_sentence = start_sentence
-            self.end_sentence = end_sentence
-            self.start_end_sum_logits = start_end_sum_logits
         if start_top_index:
             self.start_top_index = start_top_index
             self.end_top_index = end_top_index
