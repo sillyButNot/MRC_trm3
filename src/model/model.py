@@ -159,7 +159,9 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         # electra 토큰을 문장 단위로 sum 할 때 평균 내주기 위함
         # count_sentence : (batch, sentence_number)
-        count_sentence_number = sentence_one_hot.sum(dim=-1)
+        epsilon = 1e-8
+        count_sentence_number = sentence_one_hot.sum(dim=-1) + epsilon
+
         sentence_representation = sentence_representation / count_sentence_number.unsqueeze(dim=-1)
         # sentence_representation : (batch, sentence_number, hidden)
         # 더해서 0이 되는 부분은 애초에 패딩일 것임.
