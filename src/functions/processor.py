@@ -780,8 +780,8 @@ class SquadProcessor(DataProcessor):
                         answers=answers,
                     )
                     examples.append(example)
-                    # if len(examples) > 1000:
-                    #     return examples
+                    if len(examples) > 1000:
+                        return examples
 
         return examples
 
