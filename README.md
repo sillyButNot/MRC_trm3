@@ -33,3 +33,10 @@ gru input으로 [CLS][context] 를 초기에 넣어주고 두번째 gru input [�
 ver.7
 ver.6과 비슷하지만, 
 gru input으로 [CLS][context] 를 초기에 넣어주고 두번째 gru input [토큰단위정보][context] 에서 context는 처음 gru input과 같은 값
+
+
+ver.8
+electra output 을 문장단위로 정보를 합칠 때 평균냄
+
+ver.9
+구조 싹 없음..
