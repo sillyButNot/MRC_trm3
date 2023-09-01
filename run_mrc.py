@@ -102,8 +102,7 @@ if __name__ == "__main__":
     cli_parser.add_argument("--max_sentence_number", type=int, default=30)
 
     # Training Parameter
-    # cli_parser.add_argument("--learning_rate", type=float, default=5e-5)
-    cli_parser.add_argument("--learning_rate", type=float, default=1e-5)
+    cli_parser.add_argument("--learning_rate", type=float, default=5e-5)
     cli_parser.add_argument("--train_batch_size", type=int, default=16)
     cli_parser.add_argument("--eval_batch_size", type=int, default=32)
     cli_parser.add_argument("--num_train_epochs", type=int, default=10)
