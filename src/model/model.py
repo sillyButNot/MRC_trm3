@@ -191,9 +191,10 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         context_weight, context_score, context_vector = self.attn_sequence(
             cls_outputs.unsqueeze(dim=1), sentence_representation, sentence_mask_result.unsqueeze(dim=1)
         )
+        context_weight = context_weight + sentence_mask_result.unsqueeze(dim=1)
         # start_sentence : (batch, 3)
         # 원래는 score 로 top3
-        _, sentence_logits = context_weight.squeeze(dim=1).topk(3, dim=-1)
+        _, sentence_logits = context_score.squeeze(dim=1).topk(3, dim=-1)
 
         #!!!decoder_input = (bathc, 1, 2* hidden)
         decoder_input = torch.cat((cls_outputs.unsqueeze(dim=1), context_vector), dim=-1)
