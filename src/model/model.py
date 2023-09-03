@@ -147,7 +147,6 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         # !!!sentence attention 코드 추가
         # sentence_one_hot : [batch, seq_length, sentence_number]
         sentence_one_hot = F.one_hot(sentence_map, num_classes=self.max_sentence_number)
-
         # sentence_one_hot : [batch, seq_length, sentence_number] -> [batch, sentence_number, seq_length]
         sentence_one_hot = sentence_one_hot.float().transpose(1, 2)
         # sentence_representation :[batch, sentence_number, seq_length] * [batch_size, seq_length, hidden_size]
@@ -156,11 +155,13 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
 
         # electra 토큰을 문장 단위로 sum 할 때 평균 내주기 위함
         # count_sentence : (batch, sentence_number)
-        count_sentence_number = sentence_one_hot.sum(dim=-1)
-        # sentence_representation : (batch, sentence_number, hidden)
+        epsilon = 1e-8
+        count_sentence_number = sentence_one_hot.sum(dim=-1) + epsilon
+
         sentence_representation = sentence_representation / count_sentence_number.unsqueeze(dim=-1)
         sentence_representation[count_sentence_number == 0] = 0
         sentence_representation[:, 0, :] = 0
+        # sentence_representation : (batch, sentence_number, hidden)
         # 더해서 0이 되는 부분은 애초에 패딩일 것임.
         # sentence_mask : (batch, sentence_number)
         sentence_mask = torch.sum(sentence_representation, dim=-1)
@@ -187,10 +188,11 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
         sentence_logits = torch.cat((answer_sentence[0], answer_sentence[1], answer_sentence[2]), dim=1)
 
         # decoder_start_index : (batch, max_length, hidden) * (batch, hidden, 1) = (batch, max_length, 1)
-        decoder_start_index, _, _ = self.attn_sequence(start_electra_output, decoder_hidden.transpose(0, 1))
+        # decoder_hidden.transpose(0, 1) -> decoder_input
+        decoder_start_index, _, _ = self.attn_sequence(start_electra_output, decoder_input)
         decoder_start_index = decoder_start_index.squeeze(dim=-1)
 
-        decoder_end_index, _, _ = self.attn_sequence(end_electra_output, decoder_hidden.transpose(0, 1))
+        decoder_end_index, _, _ = self.attn_sequence(end_electra_output, decoder_input)
         decoder_end_index = decoder_end_index.squeeze(dim=-1)
         # outputs : (decoder_start_index, decoder_end_index)
         outputs = (

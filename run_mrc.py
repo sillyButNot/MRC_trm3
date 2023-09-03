@@ -88,7 +88,7 @@ if __name__ == "__main__":
         default="../MRC_trm3/koelectra-small-v2-discriminator",
     )
 
-    cli_parser.add_argument("--output_dir", type=str, default="./test_ver.9")
+    cli_parser.add_argument("--output_dir", type=str, default="./test_ver.9_decoder_input")
 
     # Model Hyper Parameter
     cli_parser.add_argument("--max_seq_length", type=int, default=512)

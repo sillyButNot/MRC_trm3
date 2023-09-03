@@ -116,6 +116,7 @@ def compute_predictions_logits(
             "end_logit",
             "sentence_logits",
             "answer_sentence",
+            "answer_model_sentence",
         ],
     )
 
@@ -188,6 +189,7 @@ def compute_predictions_logits(
                             end_logit=result.end_logits[end_index],
                             sentence_logits=sentence_logits,
                             answer_sentence=feature.answer_sentence,
+                            answer_model_sentence=feature.token_to_sentence_map[start_index],
                         )
                     )
 
@@ -201,6 +203,7 @@ def compute_predictions_logits(
                     end_logit=null_end_logit,
                     sentence_logits=sentence_logits,
                     answer_sentence=feature.answer_sentence,
+                    answer_model_sentence=0,
                 )
             )
         prelim_predictions = sorted(
@@ -211,13 +214,7 @@ def compute_predictions_logits(
 
         _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
             "NbestPrediction",
-            [
-                "text",
-                "start_logit",
-                "end_logit",
-                "sentence_logits",
-                "answer_sentence",
-            ],
+            ["text", "start_logit", "end_logit", "sentence_logits", "answer_sentence", "answer_model_sentence"],
         )
 
         seen_predictions = {}
@@ -261,6 +258,7 @@ def compute_predictions_logits(
                     end_logit=pred.end_logit,
                     sentence_logits=pred.sentence_logits,
                     answer_sentence=pred.answer_sentence,
+                    answer_model_sentence=pred.answer_model_sentence,
                 )
             )
         # if we didn't include the empty option in the n-best, include it
@@ -273,6 +271,7 @@ def compute_predictions_logits(
                         end_logit=null_end_logit,
                         sentence_logits=pred.sentence_logits,
                         answer_sentence=pred.answer_sentence,
+                        answer_model_sentence=pred.answer_model_sentence,
                     )
                 )
 
@@ -287,6 +286,7 @@ def compute_predictions_logits(
                         end_logit=0.0,
                         sentence_logits=0.0,
                         answer_sentence=0.0,
+                        answer_model_sentence=0.0,
                     ),
                 )
 
@@ -300,6 +300,7 @@ def compute_predictions_logits(
                     end_logit=0.0,
                     sentence_logits=0.0,
                     answer_sentence=0.0,
+                    answer_model_sentence=0.0,
                 )
             )
 
@@ -324,6 +325,7 @@ def compute_predictions_logits(
             output["end_logit"] = entry.end_logit
             output["sentence_logits"] = entry.sentence_logits
             output["answer_sentence"] = entry.answer_sentence
+            output["answer_model_sentence"] = entry.answer_model_sentence
             nbest_json.append(output)
 
         assert len(nbest_json) >= 1, "No valid predictions"
