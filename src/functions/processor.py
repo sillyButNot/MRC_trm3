@@ -757,7 +757,8 @@ class SquadProcessor(DataProcessor):
                     start_position_character = None
                     answer_text = None
                     answers = []
-
+                    #!!!주석처리할것
+                    context_text = qa["context_made"]
                     is_impossible = qa.get("is_impossible", False)
                     if not is_impossible:
                         if is_training:
@@ -892,8 +893,9 @@ class SquadExample:
                     len(char_to_word_offset) - 1,
                 )
             ]
-        else:
-            self.start_position = char_to_word_offset[start_position_character]
+        # else:
+        #     self.start_position = char_to_word_offset[start_position_character]
+        #!!!주석 풀기
 
 
 class SquadFeatures:

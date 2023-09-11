@@ -184,8 +184,11 @@ class ElectraForQuestionAnswering(ElectraPreTrainedModel):
                 rnn_output, sentence_representation, sentence_mask_result.unsqueeze(dim=1)
             )
             # attn_rnn_electra_weight : (batch, 1, hidden) * (batch, hidden_size, sentence_number) = (batch, 1, sentence_number)
+            # answer_sentence.append(attn_rnn_electra_weight)
             answer_sentence.append(attn_rnn_electra_weight.argmax(dim=-1))
         sentence_logits = torch.cat((answer_sentence[0], answer_sentence[1], answer_sentence[2]), dim=1)
+        # sentence_logits = answer_sentence[0] + answer_sentence[1] + answer_sentence[2]
+        # sentence_logits = sentence_logits.argmax(dim=-1)
 
         # decoder_start_index : (batch, max_length, hidden) * (batch, hidden, 1) = (batch, max_length, 1)
         # decoder_hidden.transpose(0, 1) -> decoder_input

@@ -189,7 +189,9 @@ def compute_predictions_logits(
                             end_logit=result.end_logits[end_index],
                             sentence_logits=sentence_logits,
                             answer_sentence=feature.answer_sentence,
-                            answer_model_sentence=feature.token_to_sentence_map[start_index],
+                            answer_model_sentence=feature.doc_sentence_orig_map[
+                                feature.token_to_sentence_map[start_index]
+                            ],
                         )
                     )
 
