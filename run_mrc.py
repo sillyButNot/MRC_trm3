@@ -81,7 +81,7 @@ if __name__ == "__main__":
     # cli_parser.add_argument("--model_name_or_path", type=str, default="./init_weight") #monologg/koelectra-base-v2-discriminator
     cli_parser.add_argument("--model_name_or_path", type=str, default="./koelectra-small-v2-discriminator")
 
-    cli_parser.add_argument("--output_dir", type=str, default="./test_small")
+    cli_parser.add_argument("--output_dir", type=str, default="./test_baseline")
 
     # Model Hyper Parameter
     cli_parser.add_argument("--max_seq_length", type=int, default=512)
@@ -123,17 +123,18 @@ if __name__ == "__main__":
     ######
     cli_parser.add_argument("--data_dir", type=str, default="./data")
     cli_parser.add_argument("--train_file", type=str, default="KorQuAD_v1.0_train.json")
-    cli_parser.add_argument("--predict_file", type=str, default="KorQuAD_v1.0_dev.json")
-    cli_parser.add_argument("--checkpoint", type=str, default="4000")
+    # cli_parser.add_argument("--predict_file", type=str, default="KorQuAD_v1.0_dev.json")
+    cli_parser.add_argument("--predict_file", type=str, default="answer.json")
+    cli_parser.add_argument("--checkpoint", type=str, default="40000")
 
     # 언어 모델링 학습만 완료된 모델 가중치를 사용할것인지 (True)
     # finetune 을 통해 저장된 모델을 사용할 것인지 (False)
-    cli_parser.add_argument("--from_init_weight", type=bool, default=True)
+    cli_parser.add_argument("--from_init_weight", type=bool, default=False)
     cli_parser.add_argument("--add_vocab", type=bool, default=False)
 
     # 저희가 갖고있는 데이터를 사용
-    cli_parser.add_argument("--do_train", type=bool, default=True)
-    cli_parser.add_argument("--do_eval", type=bool, default=False)
+    cli_parser.add_argument("--do_train", type=bool, default=False)
+    cli_parser.add_argument("--do_eval", type=bool, default=True)
 
     #
     cli_parser.add_argument("--do_predict", type=bool, default=False)
